@@ -59,7 +59,7 @@ The pure rule engine lives under `src/engine/` and is independent of React and S
 
 - The exact USA board space sequence could not be recovered from machine-readable official text without reproducing the board artwork. The functional starter circuit is isolated in `src/engine/constants.ts` and documented in [docs/track-data.md](docs/track-data.md); it must be checked against a physical USA board before claiming exact geometry.
 - The remote SQL action boundary currently records and authorizes reactions; the readable TypeScript engine is the reference for resolving the complete game. A production hardening milestone should move the complete resolver into a versioned Supabase Edge Function or a shared server package before public non-demo use.
-- AI seats are available in local preview rooms. They choose only actions accepted by the deterministic engine, but use a simple fixed heuristic rather than difficulty levels or advanced race strategy. Remote Supabase rooms do not yet expose bot-seat RPCs.
+- AI seats are available in local preview rooms. They choose only actions accepted by the deterministic engine and now weigh corner risk, Heat economy, blocking, finish opportunities, and reaction value. Difficulty levels and remote Supabase bot seats are still out of scope.
 - There is no account recovery, public room list, spectator mode, chat, mobile-first layout, audio, or monetization.
 
 ## Verify a deployment

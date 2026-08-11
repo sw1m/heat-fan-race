@@ -321,6 +321,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
   it('permits cooldown from hand and keeps public state free of private card arrays', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].engine = state.players[0].engine.slice(0, 5);
     const heat: Card = { id: 'hand-heat', kind: 'HEAT' };
     state.players[0].hand = [state.players[0].hand.find((card) => card.kind === 'BASIC')!, heat];
     state.players[1].hand = [state.players[1].hand[0]];
@@ -335,7 +336,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
       fixedRandom,
     );
     state = applyGameAction(state, { type: 'COOLDOWN', playerId: 'p1' }, fixedRandom);
-    expect(state.players[0].engine).toHaveLength(7);
+    expect(state.players[0].engine).toHaveLength(6);
     const publicState = getPublicState(state, 'p1');
     expect(JSON.stringify(publicState)).not.toContain('hand-heat');
     expect(JSON.stringify(publicState)).not.toContain('cardIds');
