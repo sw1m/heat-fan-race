@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, type JSX } from 'react';
 import { MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS } from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState } from '../engine/engine';
-import type { GameAction, GameState } from '../engine/types';
+import { distanceToNextCorner, nextCorner } from '../engine/track';
+import type { Card, GameAction, GameState } from '../engine/types';
 import {
   createRemoteRoom,
   ensureAnonymousIdentity,
@@ -25,6 +26,12 @@ import {
   type LocalRoom,
   setLocalRoom,
 } from '../lib/local-session';
+import {
+  moveCardInOrder,
+  reconcileCardOrder,
+  sortCardsNumerically,
+  type HandSortMode,
+} from '../lib/hand-order';
 
 type ActiveRoom = LocalRoom | RemoteRoom;
 
@@ -40,6 +47,12 @@ function inviteLink(code: string): string {
 
 function roomPlayers(room: ActiveRoom): RoomPlayer[] {
   return room.players;
+}
+
+function cardDisplayValue(card: Card): string {
+  if (card.kind === 'STRESS') return 'STRESS';
+  if (card.kind === 'HEAT' || card.kind === 'STARTING_HEAT') return 'HEAT';
+  return String(card.value ?? 0);
 }
 
 function localPublicPlayers(game: GameState): RoomPlayer[] {
@@ -276,9 +289,9 @@ function LandingScreen({
   return (
     <main className="landing page-shell">
       <section className="hero-panel">
-        <div className="eyebrow">PRIVATE RACE TABLE · V1</div>
+        <div className="eyebrow">PRIVATE RACE TABLE Â· V1</div>
         <h1>
-          HEAT<span>·</span>
+          HEAT<span>Â·</span>
           <em>FAN RACE</em>
         </h1>
         <p className="hero-copy">
@@ -286,13 +299,13 @@ function LandingScreen({
         </p>
         <div className="disclaimer">
           <strong>Unofficial fan project.</strong> Not affiliated with or endorsed by Days of
-          Wonder, Asmodee, or the game’s designers. For private, noncommercial games only.
+          Wonder, Asmodee, or the gameâ€™s designers. For private, noncommercial games only.
         </div>
       </section>
       <section className="lobby-card landing-card" aria-label="Race lobby">
         <div className="panel-title">
           <span>ENTER THE PADDOCK</span>
-          <span className="signal-dot">● READY</span>
+          <span className="signal-dot">â— READY</span>
         </div>
         <label className="field-label" htmlFor="nickname">
           Nickname
@@ -335,7 +348,7 @@ function LandingScreen({
         />
         {error && (
           <div className="error-banner" role="alert">
-            ⚠️ {error}
+            âš ï¸ {error}
           </div>
         )}
         {!isSupabaseConfigured && (
@@ -345,10 +358,10 @@ function LandingScreen({
           </div>
         )}
         <div className="rule-strip">
-          <span>🏎️ 2–4 racers</span>
-          <span>🔥 6 Heat</span>
-          <span>🏁 1 lap</span>
-          <span>⚙️ no accounts</span>
+          <span>ðŸŽï¸ 2â€“4 racers</span>
+          <span>ðŸ”¥ 6 Heat</span>
+          <span>ðŸ 1 lap</span>
+          <span>âš™ï¸ no accounts</span>
         </div>
       </section>
       <footer className="site-footer">
@@ -390,7 +403,7 @@ function RoomScreen({
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-lockup">
-          <span className="brand-mark">⚡</span>
+          <span className="brand-mark">âš¡</span>
           <span>
             HEAT <small>FAN RACE</small>
           </span>
@@ -404,12 +417,12 @@ function RoomScreen({
           </button>
         </div>
         <div className={`connection ${reconnecting ? 'reconnecting' : ''}`}>
-          ● {reconnecting ? 'RECONNECTING' : 'CONNECTED'}
+          â— {reconnecting ? 'RECONNECTING' : 'CONNECTED'}
         </div>
       </header>
       {error && (
         <div className="global-error" role="alert">
-          ⚠️ {error}
+          âš ï¸ {error}
         </div>
       )}
       {room.status === 'LOBBY' ? (
@@ -431,7 +444,7 @@ function RoomScreen({
           onRestart={onStart}
         />
       ) : (
-        <div className="loading-card">Loading authoritative race state…</div>
+        <div className="loading-card">Loading authoritative race stateâ€¦</div>
       )}
     </main>
   );
@@ -461,7 +474,7 @@ function LobbyView({
           <p>Share the code with friends. The host starts once two to four racers are ready.</p>
         </div>
         <div className="track-badge">
-          🇺🇸 USA <small>1 LAP · LEARNING RACE</small>
+          ðŸ‡ºðŸ‡¸ USA <small>1 LAP Â· LEARNING RACE</small>
         </div>
       </div>
       <div className="seat-grid">
@@ -471,15 +484,15 @@ function LobbyView({
             <div className={`seat-card ${player ? 'occupied' : ''}`} key={index}>
               <div className="seat-number">0{index + 1}</div>
               <div className="seat-car" style={{ color: player?.color ?? '#b9aa8e' }}>
-                🏎️
+                ðŸŽï¸
               </div>
               <div className="seat-name">{player ? player.nickname : 'OPEN SEAT'}</div>
               <div className="seat-status">
                 {player
                   ? player.isBot
-                    ? 'AI DRIVER · READY'
+                    ? 'AI DRIVER Â· READY'
                     : player.isHost
-                      ? 'HOST · READY'
+                      ? 'HOST Â· READY'
                       : player.connected
                         ? 'CONNECTED'
                         : 'RECONNECTING'
@@ -538,15 +551,29 @@ function RaceView({
   const pending = game.pending;
   const [gear, setGear] = useState(local.gear);
   const [selected, setSelected] = useState<string[]>([]);
+  const [handSort, setHandSort] = useState<HandSortMode>('MANUAL');
+  const [manualOrder, setManualOrder] = useState<string[]>([]);
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  const handIdsKey = local.hand.map((card) => card.id).join('|');
   useEffect(() => {
     setGear(local.gear);
     setSelected([]);
   }, [game.round, local.gear, pending?.playerId]);
+  useEffect(() => {
+    setManualOrder((current) => reconcileCardOrder(current, local.hand));
+  }, [handIdsKey, local.hand]);
   const active = game.activePlayerId === local.id;
   const publicState = getPublicState(game, local.id);
   const currentPublic = publicState.players.find((player) => player.id === local.id);
   const selectable = game.phase === 'PLANNING' && !game.submitted?.[local.id];
   const inviteText = pending?.playerId === local.id ? pending.options : [];
+  const handById = new Map(local.hand.map((card) => [card.id, card]));
+  const displayHand =
+    handSort === 'NUMERICAL'
+      ? sortCardsNumerically(local.hand)
+      : reconcileCardOrder(manualOrder, local.hand)
+          .map((cardId) => handById.get(cardId))
+          .filter((card): card is Card => Boolean(card));
   const selectCard = (cardId: string) =>
     setSelected((old) =>
       old.includes(cardId)
@@ -555,6 +582,14 @@ function RaceView({
           ? [...old, cardId]
           : old,
     );
+  const dropCard = (targetId: string) => {
+    if (!draggingCardId) return;
+    setManualOrder((current) =>
+      moveCardInOrder(reconcileCardOrder(current, local.hand), draggingCardId, targetId),
+    );
+    setHandSort('MANUAL');
+    setDraggingCardId(null);
+  };
   const action = (type: GameAction['type']) =>
     void onAction({ type, playerId: local.id } as GameAction);
 
@@ -567,7 +602,7 @@ function RaceView({
         </div>
         <div className="active-callout">
           {active
-            ? `YOUR MOVE · ${pending?.kind.replaceAll('_', ' ') ?? 'PLANNING'}`
+            ? `YOUR MOVE Â· ${pending?.kind.replaceAll('_', ' ') ?? 'PLANNING'}`
             : game.activePlayerId
               ? `${game.players.find((player) => player.id === game.activePlayerId)?.name ?? 'A racer'} is resolving`
               : 'All racers choose simultaneously'}
@@ -597,10 +632,10 @@ function RaceView({
               >
                 <span className="stand-rank">{player.finishRank ?? index + 1}</span>
                 <span className="stand-car" style={{ color: player.color }}>
-                  🏎️
+                  ðŸŽï¸
                 </span>
                 <span className="stand-name">
-                  {player.controller === 'BOT' ? '🤖 ' : ''}
+                  {player.controller === 'BOT' ? 'ðŸ¤– ' : ''}
                   {player.name}
                   {player.id === local.id ? ' (you)' : ''}
                 </span>
@@ -616,15 +651,15 @@ function RaceView({
             <span className="muted">{local.name}</span>
           </div>
           <div className="metrics">
-            <Metric label="GEAR" value={`⚙️ ${local.gear}`} />
-            <Metric label="ENGINE" value={`🔥 ${local.engine.length}/6`} />
+            <Metric label="GEAR" value={`âš™ï¸ ${local.gear}`} />
+            <Metric label="ENGINE" value={`ðŸ”¥ ${local.engine.length}/6`} />
             <Metric
               label="DRAW / DISCARD"
               value={`${local.deck.length} / ${local.discard.length}`}
             />
             <Metric
               label="POSITION"
-              value={currentPublic?.finished ? '🏁 FINISH' : `SPACE ${local.position.space}`}
+              value={currentPublic?.finished ? 'ðŸ FINISH' : `SPACE ${local.position.space}`}
             />
           </div>
           <div className="gear-picker">
@@ -663,25 +698,60 @@ function RaceView({
             {selected.length}/{gear} SELECTED
           </span>
         </div>
+        <div className="hand-toolbar">
+          <div className="hand-sort-controls" role="group" aria-label="Hand order">
+            <span className="helper-text">ORDER</span>
+            <button
+              type="button"
+              className={`hand-sort-button ${handSort === 'MANUAL' ? 'sort-selected' : ''}`}
+              onClick={() => setHandSort('MANUAL')}
+            >
+              MANUAL ORDER
+            </button>
+            <button
+              type="button"
+              className={`hand-sort-button ${handSort === 'NUMERICAL' ? 'sort-selected' : ''}`}
+              onClick={() => setHandSort('NUMERICAL')}
+            >
+              NUMERICAL
+            </button>
+          </div>
+          <span className="helper-text">
+            {handSort === 'MANUAL'
+              ? 'Drag cards to arrange them.'
+              : '0 â†’ 5, then Heat, then Stress.'}
+          </span>
+        </div>
         <div className="hand-row">
-          {local.hand.map((card) => (
+          {displayHand.map((card) => (
             <button
               type="button"
               className={`card card-${card.kind.toLowerCase()} ${selected.includes(card.id) ? 'card-selected' : ''}`}
               disabled={!selectable}
+              draggable={handSort === 'MANUAL' && selectable}
               key={card.id}
               onClick={() => selectCard(card.id)}
+              onDragStart={() => setDraggingCardId(card.id)}
+              onDragOver={(event) => {
+                if (handSort === 'MANUAL') event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                dropCard(card.id);
+              }}
+              onDragEnd={() => setDraggingCardId(null)}
+              title={`${cardDisplayValue(card)} card${handSort === 'MANUAL' ? ' â€” drag to reorder' : ''}`}
             >
               <span className="card-symbol">
                 {card.kind === 'STRESS'
-                  ? '⚠️'
+                  ? 'âš ï¸'
                   : card.kind === 'HEAT' || card.kind === 'STARTING_HEAT'
-                    ? '🔥'
+                    ? 'ðŸ”¥'
                     : card.kind === 'STARTING_FIVE'
                       ? '5'
                       : card.kind === 'STARTING_ZERO'
                         ? '0'
-                        : '◆'}
+                        : 'â—†'}
               </span>
               <strong>
                 {card.kind === 'BASIC'
@@ -726,7 +796,7 @@ function RaceView({
                 className="action-button action-yellow"
                 onClick={() => action('ADRENALINE_SPEED')}
               >
-                ⚡ ADRENALINE +1
+                âš¡ ADRENALINE +1
               </button>
             )}
             {inviteText.includes('ADRENALINE_COOLDOWN') && (
@@ -734,22 +804,22 @@ function RaceView({
                 className="action-button action-blue"
                 onClick={() => action('ADRENALINE_COOLDOWN')}
               >
-                ❄ ADRENALINE COOL
+                â„ ADRENALINE COOL
               </button>
             )}
             {inviteText.includes('BOOST') && (
               <button className="action-button action-red" onClick={() => action('BOOST')}>
-                💨 BOOST · PAY 1 HEAT
+                ðŸ’¨ BOOST Â· PAY 1 HEAT
               </button>
             )}
             {inviteText.includes('COOLDOWN') && (
               <button className="action-button action-blue" onClick={() => action('COOLDOWN')}>
-                ❄ COOLDOWN
+                â„ COOLDOWN
               </button>
             )}
             {inviteText.includes('SLIPSTREAM') && (
               <button className="action-button action-yellow" onClick={() => action('SLIPSTREAM')}>
-                💨 SLIPSTREAM 2
+                ðŸ’¨ SLIPSTREAM 2
               </button>
             )}
             <button
@@ -778,7 +848,7 @@ function RaceView({
       {game.phase === 'FINISHED' && (
         <div className="finish-overlay">
           <div className="finish-card">
-            <div className="finish-flag">🏁</div>
+            <div className="finish-flag">ðŸ</div>
             <div className="eyebrow">CHECKERED FLAG</div>
             <h2>
               {game.winnerId === local.id
@@ -795,7 +865,7 @@ function RaceView({
                 .map((player) => (
                   <div key={player.id}>
                     <strong>{player.finishRank}.</strong>{' '}
-                    <span style={{ color: player.color }}>🏎️</span> {player.name}
+                    <span style={{ color: player.color }}>ðŸŽï¸</span> {player.name}
                   </div>
                 ))}
             </div>
@@ -825,23 +895,131 @@ function Metric({ label, value }: { label: string; value: string }): JSX.Element
   );
 }
 
+const TURN_STEPS = [
+  { label: 'SHIFT + CARDS', short: 'SHIFT' },
+  { label: 'SPEED + MOVE', short: 'MOVE' },
+  { label: 'REACTIONS', short: 'REACT' },
+  { label: 'CLEANUP', short: 'CLEAN' },
+];
+
+function currentTurnStep(phase: GameState['phase']): number {
+  if (phase === 'PLANNING') return 0;
+  if (phase === 'RESOLVING_PLAYER') return 1;
+  if (phase === 'PLAYER_REACTION') return 2;
+  return 3;
+}
+
+function orderedTurnPlayers(game: GameState): GameState['players'] {
+  const playersById = new Map(game.players.map((player) => [player.id, player]));
+  if (game.resolutionOrder.length > 0) {
+    return game.resolutionOrder
+      .map((playerId) => playersById.get(playerId))
+      .filter((player): player is GameState['players'][number] => Boolean(player));
+  }
+  return [...game.players]
+    .filter((player) => !player.finished)
+    .sort(
+      (left, right) =>
+        right.position.space - left.position.space ||
+        left.position.lane - right.position.lane ||
+        left.seat - right.seat,
+    );
+}
+
+function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
+  const step = currentTurnStep(game.phase);
+  const raceFinished = game.phase === 'FINISHED';
+  const order = orderedTurnPlayers(game);
+  const leaderSpace = Math.max(...game.players.map((player) => player.position.space), 0);
+  const upcomingCorner = game.track.corners.find((corner) => corner.lineSpace > leaderSpace);
+
+  return (
+    <div className="turn-order-graphic" aria-label="Turn order and corner progress">
+      <div className="turn-order-heading">
+        <span>TURN ORDER</span>
+        <span className="muted">
+          {raceFinished ? 'RACE COMPLETE' : `STEP ${step + 1} OF ${TURN_STEPS.length}`}
+        </span>
+      </div>
+      <div className="turn-step-row">
+        {TURN_STEPS.map((turn, index) => {
+          const status = raceFinished
+            ? 'complete'
+            : index < step
+              ? 'complete'
+              : index === step
+                ? 'active'
+                : 'upcoming';
+          return (
+            <div className={`turn-step ${status}`} key={turn.short}>
+              <span className="turn-step-number">{index + 1}</span>
+              <strong>{turn.short}</strong>
+              <small>{turn.label}</small>
+            </div>
+          );
+        })}
+      </div>
+      <div className="turn-order-row">
+        <span className="turn-order-label">RACE ORDER</span>
+        <div className="resolution-order">
+          {order.map((player, index) => {
+            const complete =
+              raceFinished ||
+              game.phase === 'ROUND_CLEANUP' ||
+              (game.resolutionOrder.length > 0 && index < game.resolutionIndex);
+            const active = !complete && game.activePlayerId === player.id;
+            const locked = game.phase === 'PLANNING' && Boolean(game.submitted[player.id]);
+            return (
+              <span
+                className={`resolution-chip ${complete ? 'complete' : active ? 'active' : locked ? 'locked' : 'upcoming'}`}
+                key={player.id}
+              >
+                <b>{index + 1}</b> {player.name}
+                {locked && <small>LOCKED</small>}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div className="turn-order-row corner-progress-row">
+        <span className="turn-order-label">CORNER PROGRESS</span>
+        <div className="corner-progress">
+          {game.track.corners.map((corner) => {
+            const complete = leaderSpace >= corner.lineSpace;
+            const active = !complete && upcomingCorner?.id === corner.id;
+            return (
+              <span
+                className={`corner-progress-chip ${complete ? 'complete' : active ? 'active' : 'upcoming'}`}
+                key={corner.id}
+              >
+                {corner.label} Â· S{corner.lineSpace}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TrackBoard({ game }: { game: GameState }): JSX.Element {
   const positions = new Map(
     game.players.map((player) => [`${player.position.space}-${player.position.lane}`, player]),
   );
   return (
     <section className="track-panel panel">
+      <TurnOrderGraphic game={game} />
       <div className="track-head">
         <div>
           <div className="panel-title">
             <span>USA STARTER CIRCUIT</span>
-            <span className="muted">TWO LANES · MAX TWO CARS PER SPACE</span>
+            <span className="muted">TWO LANES Â· MAX TWO CARS PER SPACE</span>
           </div>
           <div className="track-legend">
-            <span>🏁 FINISH S40</span>
+            <span>ðŸ FINISH S40</span>
             {game.track.corners.map((corner) => (
               <span key={corner.id}>
-                ◼ {corner.label} <strong>{corner.speedLimit}</strong>
+                â—¼ {corner.label} <strong>{corner.speedLimit}</strong>
               </span>
             ))}
           </div>
@@ -873,12 +1051,17 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                   >
                     {corner && <span className="corner-marker">{corner.speedLimit}</span>}
                     {player && (
-                      <span
-                        className="car-marker"
-                        style={{ color: player.color }}
-                        title={player.name}
-                      >
-                        🏎️
+                      <span className="car-marker-wrap" title={player.name}>
+                        <span className="car-distance">
+                          {player.finished
+                            ? 'FINISHED'
+                            : distanceToNextCorner(game.track, player.position.space) !== null
+                              ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
+                              : `TO FINISH ${game.track.finishSpace - player.position.space}`}
+                        </span>
+                        <span className="car-marker" style={{ color: player.color }}>
+                          ðŸŽï¸
+                        </span>
                       </span>
                     )}
                     {space % 5 === 0 && <small>{space}</small>}
@@ -892,3 +1075,4 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
     </section>
   );
 }
+
