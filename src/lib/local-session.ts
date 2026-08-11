@@ -48,7 +48,7 @@ export function createLocalRoom(nickname: string, playerId: string): LocalRoom {
   return room;
 }
 
-export function addLocalPreviewSeat(room: LocalRoom): LocalRoom {
+export function addLocalBotSeat(room: LocalRoom): LocalRoom {
   if (room.players.length >= 4) return room;
   const seat = room.players.length;
   const next = {
@@ -56,13 +56,14 @@ export function addLocalPreviewSeat(room: LocalRoom): LocalRoom {
     players: [
       ...room.players,
       {
-        id: `preview-seat-${seat + 1}`,
-        nickname: `Racer ${seat + 1}`,
+        id: `bot-seat-${seat + 1}`,
+        nickname: `Bot ${seat + 1}`,
         seat,
         color: PLAYER_COLORS[seat],
         isHost: false,
         connected: true,
         submitted: false,
+        isBot: true,
       },
     ],
   };
@@ -78,6 +79,7 @@ export function startLocalRoom(room: LocalRoom): LocalRoom {
       name: player.nickname,
       seat: player.seat,
       color: player.color,
+      controller: player.isBot ? ('BOT' as const) : ('HUMAN' as const),
     })),
   );
   const next = { ...room, status: 'RACING' as const, game };
