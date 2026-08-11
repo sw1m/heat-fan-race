@@ -3,6 +3,7 @@ import { createBeginnerDeck, drawCards, replenishHand, shuffle } from './deck';
 import {
   crossedCorners,
   chooseLandingPosition,
+  finishSort,
   isAdjacentOrBehind,
   orderedPlayers,
   positionSort,
@@ -22,7 +23,7 @@ function log(state: GameState, text: string, playerId?: string): void {
     text,
     playerId,
   };
-  state.log = [entry, ...state.log].slice(0, 80);
+  state.log = [entry, ...state.log];
 }
 
 function findPlayer(state: GameState, playerId: string): PlayerState {
@@ -111,6 +112,7 @@ function movePlayer(
   movement: number,
 ): { start: number; end: number } {
   const start = player.position.space;
+  const destination = start + Math.max(0, movement);
   player.position = chooseLandingPosition(
     state.players,
     player.position,
@@ -118,6 +120,9 @@ function movePlayer(
     state.track,
     player.id,
   );
+  if (player.position.space >= state.track.finishSpace && destination >= state.track.finishSpace) {
+    player.finishProgress = Math.max(player.finishProgress ?? state.track.finishSpace, destination);
+  }
   return { start, end: player.position.space };
 }
 
@@ -227,6 +232,7 @@ function applyCornerChecks(
     const originalGear = player.gear;
     player.engine = [];
     player.gear = 1;
+    player.finishProgress = null;
     player.position = chooseLandingPosition(
       state.players,
       { space: corner.lineSpace - 1, lane: player.position.lane },
@@ -246,7 +252,10 @@ function applyCornerChecks(
     break;
   }
   player.finished = player.position.space >= state.track.finishSpace;
-  if (player.finished) log(state, `${player.name} crosses the finish line.`, player.id);
+  if (player.finished) {
+    player.finishProgress ??= player.position.space;
+    log(state, `${player.name} crosses the finish line.`, player.id);
+  }
   void random;
 }
 
@@ -274,14 +283,14 @@ function finishPlayerTurn(state: GameState, random: RandomSource): void {
   state.phase = 'ROUND_CLEANUP';
   const justFinished = state.players
     .filter((candidate) => candidate.finished && candidate.finishRank === null)
-    .sort(positionSort);
+    .sort(finishSort);
   const alreadyRanked = state.players.filter((candidate) => candidate.finishRank !== null).length;
   justFinished.forEach((candidate, index) => {
     candidate.finishRank = alreadyRanked + index + 1;
   });
+  if (state.winnerId === null && justFinished.length > 0) state.winnerId = justFinished[0].id;
   if (state.players.every((candidate) => candidate.finished)) {
-    state.winnerId =
-      [...state.players].sort((a, b) => (a.finishRank ?? 99) - (b.finishRank ?? 99))[0]?.id ?? null;
+    state.winnerId ??= [...state.players].sort(finishSort)[0]?.id ?? null;
     state.phase = 'FINISHED';
     state.activePlayerId = null;
     log(state, 'The race is finished. Final standings are locked.');
@@ -401,6 +410,7 @@ export function createInitialGame(
       played: [],
       finished: false,
       finishRank: null,
+      finishProgress: null,
     };
     drawCards(player, STARTING_HAND_SIZE, random);
     return player;
@@ -562,6 +572,7 @@ export function getPublicState(
       position: player.position,
       finished: player.finished,
       finishRank: player.finishRank,
+      finishProgress: player.finishProgress,
       handCount: player.hand.length,
       deckCount: player.deck.length,
       discardCount: player.discard.length,

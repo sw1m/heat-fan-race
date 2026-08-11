@@ -53,7 +53,7 @@ export function nextCorner(
 
 export function distanceToNextCorner(track: TrackConfig, fromSpace: number): number | null {
   const corner = nextCorner(track, fromSpace);
-  return corner ? corner.lineSpace - fromSpace : null;
+  return corner ? Math.max(0, corner.lineSpace - 1 - fromSpace) : null;
 }
 
 export function isAdjacentOrBehind(players: readonly PlayerState[], player: PlayerState): boolean {
@@ -68,6 +68,14 @@ export function isAdjacentOrBehind(players: readonly PlayerState[], player: Play
 
 export function positionSort(a: PlayerState, b: PlayerState): number {
   if (a.position.space !== b.position.space) return b.position.space - a.position.space;
+  if (a.position.lane !== b.position.lane) return a.position.lane - b.position.lane;
+  return a.seat - b.seat;
+}
+
+export function finishSort(a: PlayerState, b: PlayerState): number {
+  const aProgress = a.finishProgress ?? a.position.space;
+  const bProgress = b.finishProgress ?? b.position.space;
+  if (aProgress !== bProgress) return bProgress - aProgress;
   if (a.position.lane !== b.position.lane) return a.position.lane - b.position.lane;
   return a.seat - b.seat;
 }

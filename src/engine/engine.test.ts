@@ -6,6 +6,7 @@ import {
   chooseLandingPosition,
   crossedCorners,
   distanceToNextCorner,
+  finishSort,
   isAdjacentOrBehind,
   nextCorner,
   positionSort,
@@ -68,6 +69,7 @@ describe('beginner deck and card movement', () => {
       played: [],
       finished: false,
       finishRank: null,
+      finishProgress: null,
     };
     expect(drawCards(player, 1, fixedRandom)).toBe(1);
     expect(player.hand[0].kind).toBe('BASIC');
@@ -156,7 +158,8 @@ describe('planning, shifting, and turn order', () => {
 describe('track display helpers', () => {
   it('finds the next corner and its remaining distance', () => {
     expect(nextCorner(USA_BEGINNER_TRACK, 4)?.id).toBe('corner-1');
-    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 4)).toBe(6);
+    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 4)).toBe(5);
+    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 9)).toBe(0);
     expect(distanceToNextCorner(USA_BEGINNER_TRACK, 36)).toBeNull();
   });
 });
@@ -176,6 +179,7 @@ describe('track rules', () => {
     played: [],
     finished: false,
     finishRank: null,
+    finishProgress: null,
   });
 
   it('finds multiple corners in order and limits spaces to two cars', () => {
@@ -458,5 +462,53 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     if (state.phase === 'PLAYER_REACTION') state = pass(state, 'p2');
     expect(state.players[0].finished).toBe(true);
     expect(state.players[0].finishRank).toBe(1);
+  });
+
+  it('retains the complete event log for race review', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.log = Array.from({ length: 80 }, (_, index) => ({
+      id: `old-${index}`,
+      round: 1,
+      text: `Earlier event ${index}`,
+    }));
+    const firstCard = state.players[0].hand[0];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: [firstCard.id] },
+      fixedRandom,
+    );
+    expect(state.log).toHaveLength(81);
+    expect(state.log[0].text).toContain('locked in');
+    expect(state.log[1].id).toBe('old-0');
+    expect(state.log.at(-1)?.id).toBe('old-79');
+  });
+
+  it('ranks same-round finishers by distance beyond the line before lane ties', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 39, lane: 1 };
+    state.players[1].position = { space: 39, lane: 0 };
+    state.adrenalineEligibleIds = ['p1'];
+    state.players[0].hand = [{ id: 'finish-four', kind: 'BASIC', value: 4 }];
+    state.players[1].hand = [{ id: 'finish-one', kind: 'BASIC', value: 1 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['finish-four'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['finish-one'] },
+      fixedRandom,
+    );
+    state = pass(state, 'p2');
+    state = pass(state, 'p1');
+    state = pass(state, 'p1');
+    expect(state.phase).toBe('FINISHED');
+    expect(state.players[0].finishProgress).toBe(43);
+    expect(state.players[1].finishProgress).toBe(40);
+    expect(state.players[0].finishRank).toBe(1);
+    expect(state.players[1].finishRank).toBe(2);
+    expect(state.winnerId).toBe('p1');
+    expect(finishSort(state.players[0], state.players[1])).toBeLessThan(0);
   });
 });

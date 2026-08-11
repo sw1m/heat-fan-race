@@ -1171,9 +1171,11 @@ h2 {
   padding-bottom: 8px;
 }
 .log-list {
-  max-height: 150px;
+  max-height: 320px;
   overflow-y: auto;
   margin-top: 10px;
+  padding-right: 4px;
+  overscroll-behavior: contain;
 }
 .log-entry {
   display: grid;
@@ -1226,6 +1228,9 @@ h2 {
   padding: 12px 16px;
   margin: 22px 0;
   line-height: 1.9;
+}
+.finish-actions {
+  flex-wrap: wrap;
 }
 
 @media (max-width: 920px) {
