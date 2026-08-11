@@ -635,6 +635,7 @@ function RaceView({
   const [handSort, setHandSort] = useState<HandSortMode>('MANUAL');
   const [manualOrder, setManualOrder] = useState<string[]>([]);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  const [reviewedFinish, setReviewedFinish] = useState(false);
   const handIdsKey = local.hand.map((card) => card.id).join('|');
   useEffect(() => {
     setGear(local.gear);
@@ -647,6 +648,9 @@ function RaceView({
       current.filter((cardId) => local.hand.some((card) => card.id === cardId)),
     );
   }, [handIdsKey, local.hand]);
+  useEffect(() => {
+    if (game.phase !== 'FINISHED') setReviewedFinish(false);
+  }, [game.phase]);
   const active = game.activePlayerId === local.id;
   const publicState = getPublicState(game, local.id);
   const currentPublic = publicState.players.find((player) => player.id === local.id);
@@ -965,7 +969,7 @@ function RaceView({
           <span className="muted">AUTHORITATIVE EVENTS</span>
         </div>
         <div className="log-list">
-          {game.log.slice(0, 12).map((entry) => (
+          {game.log.map((entry) => (
             <div className="log-entry" key={entry.id}>
               <span>R{entry.round}</span>
               <p>{entry.text}</p>
@@ -973,7 +977,7 @@ function RaceView({
           ))}
         </div>
       </section>
-      {game.phase === 'FINISHED' && (
+      {game.phase === 'FINISHED' && !reviewedFinish && (
         <div className="finish-overlay">
           <div className="finish-card">
             <div className="finish-flag">🏁</div>
@@ -998,8 +1002,11 @@ function RaceView({
                 ))}
             </div>
             <div className="button-row finish-actions">
+              <button className="primary-button" onClick={() => setReviewedFinish(true)}>
+                REVIEW RACE
+              </button>
               {isHost && (
-                <button className="primary-button" onClick={() => void onRestart()}>
+                <button className="secondary-button" onClick={() => void onRestart()}>
                   RESTART RACE
                 </button>
               )}
