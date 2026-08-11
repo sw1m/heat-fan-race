@@ -289,9 +289,9 @@ function LandingScreen({
   return (
     <main className="landing page-shell">
       <section className="hero-panel">
-        <div className="eyebrow">PRIVATE RACE TABLE Â· V1</div>
+        <div className="eyebrow">PRIVATE RACE TABLE · V1</div>
         <h1>
-          HEAT<span>Â·</span>
+          HEAT<span>·</span>
           <em>FAN RACE</em>
         </h1>
         <p className="hero-copy">
@@ -299,13 +299,13 @@ function LandingScreen({
         </p>
         <div className="disclaimer">
           <strong>Unofficial fan project.</strong> Not affiliated with or endorsed by Days of
-          Wonder, Asmodee, or the gameâ€™s designers. For private, noncommercial games only.
+          Wonder, Asmodee, or the game’s designers. For private, noncommercial games only.
         </div>
       </section>
       <section className="lobby-card landing-card" aria-label="Race lobby">
         <div className="panel-title">
           <span>ENTER THE PADDOCK</span>
-          <span className="signal-dot">â— READY</span>
+          <span className="signal-dot">● READY</span>
         </div>
         <label className="field-label" htmlFor="nickname">
           Nickname
@@ -348,7 +348,7 @@ function LandingScreen({
         />
         {error && (
           <div className="error-banner" role="alert">
-            âš ï¸ {error}
+            ⚠️ {error}
           </div>
         )}
         {!isSupabaseConfigured && (
@@ -358,10 +358,10 @@ function LandingScreen({
           </div>
         )}
         <div className="rule-strip">
-          <span>ðŸŽï¸ 2â€“4 racers</span>
-          <span>ðŸ”¥ 6 Heat</span>
-          <span>ðŸ 1 lap</span>
-          <span>âš™ï¸ no accounts</span>
+          <span>🏎️ 2–4 racers</span>
+          <span>🔥 6 Heat</span>
+          <span>🏁 1 lap</span>
+          <span>⚙️ no accounts</span>
         </div>
       </section>
       <footer className="site-footer">
@@ -403,7 +403,7 @@ function RoomScreen({
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-lockup">
-          <span className="brand-mark">âš¡</span>
+          <span className="brand-mark">⚡</span>
           <span>
             HEAT <small>FAN RACE</small>
           </span>
@@ -417,12 +417,12 @@ function RoomScreen({
           </button>
         </div>
         <div className={`connection ${reconnecting ? 'reconnecting' : ''}`}>
-          â— {reconnecting ? 'RECONNECTING' : 'CONNECTED'}
+          ● {reconnecting ? 'RECONNECTING' : 'CONNECTED'}
         </div>
       </header>
       {error && (
         <div className="global-error" role="alert">
-          âš ï¸ {error}
+          ⚠️ {error}
         </div>
       )}
       {room.status === 'LOBBY' ? (
@@ -444,7 +444,7 @@ function RoomScreen({
           onRestart={onStart}
         />
       ) : (
-        <div className="loading-card">Loading authoritative race stateâ€¦</div>
+        <div className="loading-card">Loading authoritative race state…</div>
       )}
     </main>
   );
@@ -474,7 +474,7 @@ function LobbyView({
           <p>Share the code with friends. The host starts once two to four racers are ready.</p>
         </div>
         <div className="track-badge">
-          ðŸ‡ºðŸ‡¸ USA <small>1 LAP Â· LEARNING RACE</small>
+          🇺🇸 USA <small>1 LAP · LEARNING RACE</small>
         </div>
       </div>
       <div className="seat-grid">
@@ -484,15 +484,15 @@ function LobbyView({
             <div className={`seat-card ${player ? 'occupied' : ''}`} key={index}>
               <div className="seat-number">0{index + 1}</div>
               <div className="seat-car" style={{ color: player?.color ?? '#b9aa8e' }}>
-                ðŸŽï¸
+                🏎️
               </div>
               <div className="seat-name">{player ? player.nickname : 'OPEN SEAT'}</div>
               <div className="seat-status">
                 {player
                   ? player.isBot
-                    ? 'AI DRIVER Â· READY'
+                    ? 'AI DRIVER · READY'
                     : player.isHost
-                      ? 'HOST Â· READY'
+                      ? 'HOST · READY'
                       : player.connected
                         ? 'CONNECTED'
                         : 'RECONNECTING'
@@ -602,7 +602,7 @@ function RaceView({
         </div>
         <div className="active-callout">
           {active
-            ? `YOUR MOVE Â· ${pending?.kind.replaceAll('_', ' ') ?? 'PLANNING'}`
+            ? `YOUR MOVE · ${pending?.kind.replaceAll('_', ' ') ?? 'PLANNING'}`
             : game.activePlayerId
               ? `${game.players.find((player) => player.id === game.activePlayerId)?.name ?? 'A racer'} is resolving`
               : 'All racers choose simultaneously'}
@@ -632,10 +632,10 @@ function RaceView({
               >
                 <span className="stand-rank">{player.finishRank ?? index + 1}</span>
                 <span className="stand-car" style={{ color: player.color }}>
-                  ðŸŽï¸
+                  🏎️
                 </span>
                 <span className="stand-name">
-                  {player.controller === 'BOT' ? 'ðŸ¤– ' : ''}
+                  {player.controller === 'BOT' ? '🤖 ' : ''}
                   {player.name}
                   {player.id === local.id ? ' (you)' : ''}
                 </span>
@@ -651,15 +651,15 @@ function RaceView({
             <span className="muted">{local.name}</span>
           </div>
           <div className="metrics">
-            <Metric label="GEAR" value={`âš™ï¸ ${local.gear}`} />
-            <Metric label="ENGINE" value={`ðŸ”¥ ${local.engine.length}/6`} />
+            <Metric label="GEAR" value={`⚙️ ${local.gear}`} />
+            <Metric label="ENGINE" value={`🔥 ${local.engine.length}/6`} />
             <Metric
               label="DRAW / DISCARD"
               value={`${local.deck.length} / ${local.discard.length}`}
             />
             <Metric
               label="POSITION"
-              value={currentPublic?.finished ? 'ðŸ FINISH' : `SPACE ${local.position.space}`}
+              value={currentPublic?.finished ? '🏁 FINISH' : `SPACE ${local.position.space}`}
             />
           </div>
           <div className="gear-picker">
@@ -719,7 +719,7 @@ function RaceView({
           <span className="helper-text">
             {handSort === 'MANUAL'
               ? 'Drag cards to arrange them.'
-              : '0 â†’ 5, then Heat, then Stress.'}
+              : '0 → 5, then Heat, then Stress.'}
           </span>
         </div>
         <div className="hand-row">
@@ -740,18 +740,18 @@ function RaceView({
                 dropCard(card.id);
               }}
               onDragEnd={() => setDraggingCardId(null)}
-              title={`${cardDisplayValue(card)} card${handSort === 'MANUAL' ? ' â€” drag to reorder' : ''}`}
+              title={`${cardDisplayValue(card)} card${handSort === 'MANUAL' ? ' — drag to reorder' : ''}`}
             >
               <span className="card-symbol">
                 {card.kind === 'STRESS'
-                  ? 'âš ï¸'
+                  ? '⚠️'
                   : card.kind === 'HEAT' || card.kind === 'STARTING_HEAT'
-                    ? 'ðŸ”¥'
+                    ? '🔥'
                     : card.kind === 'STARTING_FIVE'
                       ? '5'
                       : card.kind === 'STARTING_ZERO'
                         ? '0'
-                        : 'â—†'}
+                        : '◆'}
               </span>
               <strong>
                 {card.kind === 'BASIC'
@@ -796,7 +796,7 @@ function RaceView({
                 className="action-button action-yellow"
                 onClick={() => action('ADRENALINE_SPEED')}
               >
-                âš¡ ADRENALINE +1
+                ⚡ ADRENALINE +1
               </button>
             )}
             {inviteText.includes('ADRENALINE_COOLDOWN') && (
@@ -804,22 +804,22 @@ function RaceView({
                 className="action-button action-blue"
                 onClick={() => action('ADRENALINE_COOLDOWN')}
               >
-                â„ ADRENALINE COOL
+                ❄ ADRENALINE COOL
               </button>
             )}
             {inviteText.includes('BOOST') && (
               <button className="action-button action-red" onClick={() => action('BOOST')}>
-                ðŸ’¨ BOOST Â· PAY 1 HEAT
+                💨 BOOST · PAY 1 HEAT
               </button>
             )}
             {inviteText.includes('COOLDOWN') && (
               <button className="action-button action-blue" onClick={() => action('COOLDOWN')}>
-                â„ COOLDOWN
+                ❄ COOLDOWN
               </button>
             )}
             {inviteText.includes('SLIPSTREAM') && (
               <button className="action-button action-yellow" onClick={() => action('SLIPSTREAM')}>
-                ðŸ’¨ SLIPSTREAM 2
+                💨 SLIPSTREAM 2
               </button>
             )}
             <button
@@ -848,7 +848,7 @@ function RaceView({
       {game.phase === 'FINISHED' && (
         <div className="finish-overlay">
           <div className="finish-card">
-            <div className="finish-flag">ðŸ</div>
+            <div className="finish-flag">🏁</div>
             <div className="eyebrow">CHECKERED FLAG</div>
             <h2>
               {game.winnerId === local.id
@@ -865,7 +865,7 @@ function RaceView({
                 .map((player) => (
                   <div key={player.id}>
                     <strong>{player.finishRank}.</strong>{' '}
-                    <span style={{ color: player.color }}>ðŸŽï¸</span> {player.name}
+                    <span style={{ color: player.color }}>🏎️</span> {player.name}
                   </div>
                 ))}
             </div>
@@ -992,7 +992,7 @@ function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
                 className={`corner-progress-chip ${complete ? 'complete' : active ? 'active' : 'upcoming'}`}
                 key={corner.id}
               >
-                {corner.label} Â· S{corner.lineSpace}
+                {corner.label} · S{corner.lineSpace}
               </span>
             );
           })}
@@ -1013,13 +1013,13 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
         <div>
           <div className="panel-title">
             <span>USA STARTER CIRCUIT</span>
-            <span className="muted">TWO LANES Â· MAX TWO CARS PER SPACE</span>
+            <span className="muted">TWO LANES · MAX TWO CARS PER SPACE</span>
           </div>
           <div className="track-legend">
-            <span>ðŸ FINISH S40</span>
+            <span>🏁 FINISH S40</span>
             {game.track.corners.map((corner) => (
               <span key={corner.id}>
-                â—¼ {corner.label} <strong>{corner.speedLimit}</strong>
+                ◼ {corner.label} <strong>{corner.speedLimit}</strong>
               </span>
             ))}
           </div>
@@ -1060,7 +1060,7 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                               : `TO FINISH ${game.track.finishSpace - player.position.space}`}
                         </span>
                         <span className="car-marker" style={{ color: player.color }}>
-                          ðŸŽï¸
+                          🏎️
                         </span>
                       </span>
                     )}
@@ -1075,4 +1075,3 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
     </section>
   );
 }
-
