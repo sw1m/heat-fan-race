@@ -325,7 +325,13 @@ function submitPlan(
 }
 
 export function createInitialGame(
-  playerSpecs: Array<{ id: string; name: string; seat: number; color: string }>,
+  playerSpecs: Array<{
+    id: string;
+    name: string;
+    seat: number;
+    color: string;
+    controller?: 'HUMAN' | 'BOT';
+  }>,
   random: RandomSource = Math.random,
 ): GameState {
   const players: PlayerState[] = playerSpecs.map((spec, index) => {
