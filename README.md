@@ -6,7 +6,7 @@ This project is not affiliated with or endorsed by Days of Wonder, Asmodee, Asmo
 
 ## V1 scope
 
-V1 supports two to four human racers in one private USA one-lap learning race. It includes the basic speed deck, Stress, the three standard starting cards (0, 5, and the extra Heat), six engine Heat, seven-card hands, gears 1–4, normal and paid two-position shifting, simultaneous planning, ordered movement, Adrenaline, Boost, Cooldown, Slipstream, corner checks, blocking, spinouts, reshuffling, finish ranking, refresh/rejoin storage, and a host-controlled lobby. Garage upgrades, Weather, Road Conditions, Events, Championship mode, Legends, AI, chat, sound, and multiple tracks are intentionally out of scope.
+V1 supports two to four racers in one private USA one-lap learning race, including deterministic rules-following AI seats for solo local testing. It includes the basic speed deck, Stress, the three standard starting cards (0, 5, and the extra Heat), six engine Heat, seven-card hands, gears 1–4, normal and paid two-position shifting, simultaneous planning, ordered movement, Adrenaline, Boost, Cooldown, Slipstream, corner checks, blocking, spinouts, reshuffling, finish ranking, refresh/rejoin storage, and a host-controlled lobby. Garage upgrades, Weather, Road Conditions, Events, Championship mode, Legends, strategic AI difficulty levels, chat, sound, and multiple tracks are intentionally out of scope.
 
 ## Run locally
 
@@ -59,7 +59,7 @@ The pure rule engine lives under `src/engine/` and is independent of React and S
 
 - The exact USA board space sequence could not be recovered from machine-readable official text without reproducing the board artwork. The functional starter circuit is isolated in `src/engine/constants.ts` and documented in [docs/track-data.md](docs/track-data.md); it must be checked against a physical USA board before claiming exact geometry.
 - The remote SQL action boundary currently records and authorizes reactions; the readable TypeScript engine is the reference for resolving the complete game. A production hardening milestone should move the complete resolver into a versioned Supabase Edge Function or a shared server package before public non-demo use.
-- The local preview seats are placeholders for UI smoke tests, not computer opponents.
+- AI seats are available in local preview rooms. They choose only actions accepted by the deterministic engine, but use a simple fixed heuristic rather than difficulty levels or advanced race strategy. Remote Supabase rooms do not yet expose bot-seat RPCs.
 - There is no account recovery, public room list, spectator mode, chat, mobile-first layout, audio, or monetization.
 
 ## Verify a deployment
