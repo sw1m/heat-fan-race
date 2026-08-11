@@ -1,15 +1,17 @@
 import { test, expect } from '@playwright/test';
 
-test('landing page can create a local preview room and show the four-seat lobby', async ({
-  page,
-}) => {
+test('a solo player can add a bot and start a local test race', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Nickname').fill('Preview Driver');
   await page.getByRole('button', { name: 'CREATE RACE' }).click();
   await expect(page.getByText('Choose your seat.')).toBeVisible();
-  await page.getByRole('button', { name: 'ADD PREVIEW SEAT' }).click();
-  await expect(page.getByText('Racer 2')).toBeVisible();
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await expect(page.getByText('Bot 2')).toBeVisible();
+  await expect(page.getByText('AI DRIVER · READY')).toBeVisible();
   await expect(page.locator('.room-share')).toBeVisible();
+  await page.getByRole('button', { name: 'START RACE' }).click();
+  await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
+  await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
 });
 
 test('two browser contexts can create, join, start, and observe a synchronized room when Supabase is configured', async ({
