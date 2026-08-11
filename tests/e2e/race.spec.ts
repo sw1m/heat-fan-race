@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-test('a solo player can add a bot and start a local test race', async ({ page }) => {
+test('a solo player can fill the grid with AI drivers and start a local test race', async ({
+  page,
+}) => {
   await page.goto('/');
   await page.getByLabel('Nickname').fill('Preview Driver');
   await page.getByRole('button', { name: 'Blue car' }).click();
@@ -12,24 +14,29 @@ test('a solo player can add a bot and start a local test race', async ({ page })
   await expect(page.getByText('Choose your seat.')).toBeVisible();
   await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
   await expect(page.getByText('Bot 2')).toBeVisible();
-  await expect(page.getByText('AI DRIVER · READY')).toBeVisible();
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await expect(page.getByText('Bot 3')).toBeVisible();
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await expect(page.getByText('Bot 4')).toBeVisible();
+  await expect(page.getByText('AI DRIVER · READY')).toHaveCount(3);
   await expect(page.locator('.room-share')).toBeVisible();
   await page.getByRole('button', { name: 'START RACE' }).click();
   await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
-  await expect(page.locator('.stand-car')).toHaveCount(2);
+  await expect(page.locator('.stand-car')).toHaveCount(4);
+  await expect(page.locator('.starting-space .car-marker')).toHaveCount(2);
   const carStyles = await page
     .locator('.stand-car .car-token')
     .evaluateAll((elements) =>
       elements.map((element) => getComputedStyle(element).backgroundColor),
     );
-  expect(new Set(carStyles).size).toBe(2);
+  expect(new Set(carStyles).size).toBe(4);
   const trackCarStyles = await page
     .locator('.car-marker')
     .evaluateAll((elements) =>
       elements.map((element) => getComputedStyle(element).backgroundColor),
     );
-  expect(new Set(trackCarStyles).size).toBe(2);
+  expect(new Set(trackCarStyles).size).toBe(4);
   await page.getByRole('button', { name: /SHIFT/ }).click();
   await expect(page.getByText('1. Shift and choose cards')).toBeVisible();
   await expect(page.getByText(/Bot 2 locked in/)).toHaveCount(0);

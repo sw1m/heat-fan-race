@@ -197,6 +197,21 @@ describe('track rules', () => {
     ).toEqual({ space: 5, lane: 0 });
   });
 
+  it('puts a second landing car in the open lane and stops at a full block', () => {
+    const oneCar = [car('p1', 5, 0)];
+    expect(
+      chooseLandingPosition(oneCar, { space: 1, lane: 1 }, 4, USA_BEGINNER_TRACK, 'p2'),
+    ).toEqual({ space: 5, lane: 1 });
+
+    const fullSpace = [...oneCar, car('p2', 5, 1)];
+    expect(
+      chooseLandingPosition(fullSpace, { space: 4, lane: 1 }, 1, USA_BEGINNER_TRACK, 'p3'),
+    ).toEqual({ space: 4, lane: 1 });
+    expect(
+      chooseLandingPosition(fullSpace, { space: 4, lane: 1 }, 0, USA_BEGINNER_TRACK, 'p3'),
+    ).toEqual({ space: 4, lane: 1 });
+  });
+
   it('allows passing through cars and only identifies immediate slipstream adjacency', () => {
     const board = [car('p1', 3, 0), car('p2', 6, 0)];
     expect(
@@ -297,8 +312,13 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     );
     expect(state.pending?.options).toContain('BOOST');
     const before = state.players[0].engine.length;
+    const beforeBoostSpace = state.players[0].position.space;
+    const beforeBoostSpeed = state.pending?.speed ?? 0;
     state = applyGameAction(state, { type: 'BOOST', playerId: 'p1' }, fixedRandom);
     expect(state.players[0].engine.length).toBe(before - 1);
+    expect(state.players[0].position.space).toBe(beforeBoostSpace + 2);
+    expect(state.pending?.speed).toBe(beforeBoostSpeed + 2);
+    expect(state.players[0].played.some((card) => card.id === 'boost-basic')).toBe(true);
     expect(state.log.some((entry) => entry.text.includes('boosts'))).toBe(true);
   });
 
