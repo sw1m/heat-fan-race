@@ -2,7 +2,7 @@
 
 ## Repository map
 
-- `src/engine/` — pure TypeScript cards, track data, state machine, and rules tests. Do not import React, Supabase, DOM APIs, or browser storage here.
+- `src/engine/` — pure TypeScript cards, track data, state machine, rules-following bot policy, and tests. Do not import React, Supabase, DOM APIs, or browser storage here.
 - `src/lib/` — Supabase command/read adapter, local preview persistence, and small room policy helpers.
 - `src/ui/` — React views and CSS table presentation. UI dispatches commands; it does not mutate authoritative game state directly.
 - `supabase/migrations/` — schema, RLS, Realtime publication, and transactional RPC boundaries.
