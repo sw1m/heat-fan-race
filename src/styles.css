@@ -786,7 +786,7 @@ h2 {
 }
 .track-lane {
   display: grid;
-  grid-template-columns: 82px repeat(41, minmax(28px, 1fr));
+  grid-template-columns: 82px repeat(42, minmax(28px, 1fr));
   align-items: center;
   gap: 3px;
 }
@@ -808,6 +808,15 @@ h2 {
 }
 .track-space:nth-child(odd) {
   background: #3d3329;
+}
+.starting-space {
+  background: repeating-linear-gradient(135deg, #49382b, #49382b 5px, #68452e 5px, #68452e 10px);
+  border-color: #9a6a3b;
+}
+.starting-space small {
+  color: var(--orange);
+  font-size: 7px;
+  letter-spacing: 0.08em;
 }
 .corner-space {
   border-left: 4px solid var(--yellow);

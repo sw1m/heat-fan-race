@@ -779,6 +779,9 @@ function RaceView({
                   : 'Normal shift: one gear position.'
                 : 'Gear is locked for this phase.'}
             </span>
+            <span className="helper-text">
+              BOOST: gear 3–4, pay 1 Heat, reveal a Basic Speed card.
+            </span>
           </div>
         </section>
       </div>
@@ -1195,6 +1198,11 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
   const positions = new Map(
     game.players.map((player) => [`${player.position.space}-${player.position.lane}`, player]),
   );
+  const startingSpace = Math.min(0, ...game.track.grid.map((position) => position.space));
+  const trackSpaces = Array.from(
+    { length: game.track.finishSpace - startingSpace + 1 },
+    (_, index) => startingSpace + index,
+  );
   return (
     <section className="track-panel panel">
       <TurnOrderGraphic game={game} />
@@ -1228,14 +1236,14 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
           {[0, 1].map((lane) => (
             <div className="track-lane" key={lane}>
               <div className="lane-label">{lane === 0 ? 'RACE LINE' : 'OUTSIDE'}</div>
-              {Array.from({ length: game.track.finishSpace + 1 }, (_, space) => {
+              {trackSpaces.map((space) => {
                 const player = positions.get(`${space}-${lane}`);
                 const corner = game.track.corners.find(
                   (candidate) => candidate.lineSpace === space,
                 );
                 return (
                   <div
-                    className={`track-space ${corner ? 'corner-space' : ''} ${space === game.track.finishSpace ? 'finish-space' : ''}`}
+                    className={`track-space ${space < 0 ? 'starting-space' : ''} ${corner ? 'corner-space' : ''} ${space === game.track.finishSpace ? 'finish-space' : ''}`}
                     key={space}
                   >
                     {corner && <span className="corner-marker">{corner.speedLimit}</span>}
@@ -1251,7 +1259,7 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                         <CarToken color={player.color} className="car-marker" />
                       </span>
                     )}
-                    {space % 5 === 0 && <small>{space}</small>}
+                    {space < 0 ? <small>GRID</small> : space % 5 === 0 && <small>{space}</small>}
                   </div>
                 );
               })}
