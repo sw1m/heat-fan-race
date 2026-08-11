@@ -25,9 +25,12 @@ export function chooseLandingPosition(
   track: TrackConfig,
   playerId: string,
 ): CarPosition {
-  const desired = Math.min(track.finishSpace, current.space + Math.max(0, movement));
+  const distance = Math.max(0, movement);
+  if (distance === 0) return current;
+  const desired = Math.min(track.finishSpace, current.space + distance);
   let space = desired;
   while (space > current.space && !isSpaceOpen(players, space, playerId)) space -= 1;
+  if (space === current.space) return current;
   const occupants = occupantsAt(players, space, playerId);
   const lane: Lane = occupants.some((player) => player.position.lane === 0) ? 1 : 0;
   return { space, lane };
