@@ -22,6 +22,10 @@ export function setLocalRoom(room: LocalRoom): void {
   localStorage.setItem(ROOM_KEY, JSON.stringify(room));
 }
 
+export function clearLocalRoom(): void {
+  localStorage.removeItem(ROOM_KEY);
+}
+
 export function makeRoomCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
