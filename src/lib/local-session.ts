@@ -1,4 +1,4 @@
-import { PLAYER_COLORS, type PlayerColor } from '../engine/constants';
+import { MAX_PLAYERS, PLAYER_COLORS, type PlayerColor } from '../engine/constants';
 import { createInitialGame } from '../engine/engine';
 import type { GameState } from '../engine/types';
 import type { RoomPlayer } from './supabase';
@@ -57,7 +57,7 @@ export function createLocalRoom(
 }
 
 export function addLocalBotSeat(room: LocalRoom): LocalRoom {
-  if (room.players.length >= 4) return room;
+  if (room.players.length >= MAX_PLAYERS) return room;
   const seat = room.players.length;
   const usedColors = new Set(room.players.map((player) => player.color));
   const color =

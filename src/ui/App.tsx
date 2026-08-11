@@ -61,6 +61,8 @@ const CAR_COLOR_NAMES: Record<PlayerColor, string> = {
   '#ee9a2f': 'Orange',
   '#245c8c': 'Blue',
   '#2f7a54': 'Green',
+  '#7b4d9e': 'Purple',
+  '#2b9db2': 'Teal',
 };
 
 function carColorName(color: string): string {
@@ -72,6 +74,8 @@ const CAR_MARKER_FILTERS: Record<string, string> = {
   '#ee9a2f': 'hue-rotate(42deg) saturate(1.35) brightness(1.05)',
   '#245c8c': 'hue-rotate(202deg) saturate(0.95)',
   '#2f7a54': 'hue-rotate(138deg) saturate(0.9)',
+  '#7b4d9e': 'hue-rotate(274deg) saturate(1.15) brightness(0.95)',
+  '#2b9db2': 'hue-rotate(178deg) saturate(1.25) brightness(1.02)',
 };
 
 function carMarkerFilter(color: string): string {
@@ -474,7 +478,7 @@ function LandingScreen({
           </div>
         )}
         <div className="rule-strip">
-          <span>🏎️ 2–4 racers</span>
+          <span>🏎️ 2–6 racers</span>
           <span>🔥 6 Heat</span>
           <span>🏁 1 lap</span>
           <span>⚙️ no accounts</span>
@@ -627,7 +631,7 @@ function LobbyView({
       <div className="lobby-heading">
         <div>
           <h2>Choose your seat.</h2>
-          <p>Share the code with friends. The host starts once two to four racers are ready.</p>
+          <p>Share the code with friends. The host starts once two to six racers are ready.</p>
         </div>
         <div className="track-badge">
           🇺🇸 USA <small>1 LAP · LEARNING RACE</small>

@@ -2,7 +2,7 @@
 
 The official basic rules identify the USA track as the recommended first track and recommend one lap for a learning race. The official board’s exact space-by-space lane geometry is visual board data, not available in machine-readable text on the linked page. This repository therefore does **not** claim the following values are an exact transcription of the physical USA board.
 
-The V1 functional starter circuit in `src/engine/constants.ts` uses 40 numbered spaces, two lanes, a four-space starting grid, and four data-driven corners:
+The V1 functional starter circuit in `src/engine/constants.ts` uses 40 numbered spaces, two lanes, a six-space starting grid, and four data-driven corners:
 
 | Marker | Space | Limit |
 | ------ | ----: | ----: |

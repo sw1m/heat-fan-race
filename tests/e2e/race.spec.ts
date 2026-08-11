@@ -18,29 +18,33 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   await expect(page.getByText('Bot 3')).toBeVisible();
   await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
   await expect(page.getByText('Bot 4')).toBeVisible();
-  await expect(page.getByText('AI DRIVER · READY')).toHaveCount(3);
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await expect(page.getByText('Bot 5')).toBeVisible();
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await expect(page.getByText('Bot 6')).toBeVisible();
+  await expect(page.getByText('AI DRIVER · READY')).toHaveCount(5);
   await expect(page.locator('.room-share')).toBeVisible();
   await page.getByRole('button', { name: 'START RACE' }).click();
   await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
-  await expect(page.locator('.stand-stats')).toHaveCount(4);
+  await expect(page.locator('.stand-stats')).toHaveCount(6);
   await expect(page.locator('.stand-stats').first()).toContainText('/7');
   await expect(page.locator('.stand-stats').first()).toContainText('G1');
   await expect(page.getByRole('button', { name: 'NUMERICAL' })).toHaveClass(/sort-selected/);
-  await expect(page.locator('.stand-car')).toHaveCount(4);
-  await expect(page.locator('.starting-space .car-marker')).toHaveCount(2);
+  await expect(page.locator('.stand-car')).toHaveCount(6);
+  await expect(page.locator('.car-marker')).toHaveCount(6);
   const carMarkers = await page.locator('.stand-car .car-token').evaluateAll((elements) => ({
     sources: [...new Set(elements.map((element) => element.getAttribute('src')))],
     filters: [...new Set(elements.map((element) => getComputedStyle(element).filter))],
   }));
   expect(carMarkers.sources).toHaveLength(1);
-  expect(carMarkers.filters).toHaveLength(4);
+  expect(carMarkers.filters).toHaveLength(6);
   const trackCarMarkers = await page.locator('.car-marker').evaluateAll((elements) => ({
     sources: [...new Set(elements.map((element) => element.getAttribute('src')))],
     filters: [...new Set(elements.map((element) => getComputedStyle(element).filter))],
   }));
   expect(trackCarMarkers.sources).toHaveLength(1);
-  expect(trackCarMarkers.filters).toHaveLength(4);
+  expect(trackCarMarkers.filters).toHaveLength(6);
   await page.getByRole('button', { name: /SHIFT/ }).click();
   await expect(page.getByText('1. Shift and choose cards')).toBeVisible();
   await page.locator('.log-group').first().locator('summary').click();

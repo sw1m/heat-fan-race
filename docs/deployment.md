@@ -4,7 +4,7 @@
 
 1. Create a free project.
 2. Enable Authentication → Providers → Anonymous.
-3. Run `supabase/migrations/202608100001_initial.sql`.
+3. Run every file in `supabase/migrations/` in filename order, including `202608110003_six_player_rooms.sql`.
 4. Confirm `room_players` and `room_events` are enabled in Realtime.
 5. Copy the project URL and anon key into GitHub Actions repository secrets named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 
@@ -22,7 +22,7 @@ The workflow sets `VITE_BASE_PATH=/<repository-name>/`, builds, uploads `dist/`,
 
 ## Smoke test
 
-Open the public URL in two separate browser profiles. Create a room, copy the invite, join from the second browser, confirm two seats, start the race, refresh during planning, and verify that the room code, phase, public player counts, and own hand remain available. Run the unit suite and the configured Playwright multi-context test before inviting friends.
+Open the public URL in two separate browser profiles. Create a room, copy the invite, join from the second browser, confirm two seats, start the race, refresh during planning, and verify that the room code, phase, public player counts, and own hand remain available. For a six-player smoke test, fill the remaining seats with local AI drivers and confirm all six cars appear on the starting grid. Run the unit suite and the configured Playwright multi-context test before inviting friends.
 
 ## Manual setup still required in this workspace
 
