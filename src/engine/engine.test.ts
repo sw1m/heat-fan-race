@@ -142,6 +142,10 @@ describe('planning, shifting, and turn order', () => {
     expect(state.phase).toBe('PLAYER_REACTION');
     const active = state.activePlayerId!;
     state = pass(state, active);
+    const resolvedPlayer = state.players.find((player) => player.id === active)!;
+    expect(resolvedPlayer.played).toHaveLength(0);
+    expect(resolvedPlayer.discard.length).toBeGreaterThan(0);
+    expect(resolvedPlayer.hand).toHaveLength(7);
     state = pass(state, state.activePlayerId!);
     if (state.phase === 'PLAYER_REACTION') state = pass(state, state.activePlayerId!);
     expect(state.phase).toBe('PLANNING');
