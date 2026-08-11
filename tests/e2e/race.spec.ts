@@ -23,6 +23,9 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   await page.getByRole('button', { name: 'START RACE' }).click();
   await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
+  await expect(page.locator('.stand-stats')).toHaveCount(4);
+  await expect(page.locator('.stand-stats').first()).toContainText('/7');
+  await expect(page.locator('.stand-stats').first()).toContainText('G1');
   await expect(page.getByRole('button', { name: 'NUMERICAL' })).toHaveClass(/sort-selected/);
   await expect(page.locator('.stand-car')).toHaveCount(4);
   await expect(page.locator('.starting-space .car-marker')).toHaveCount(2);
@@ -40,14 +43,16 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   expect(trackCarMarkers.filters).toHaveLength(4);
   await page.getByRole('button', { name: /SHIFT/ }).click();
   await expect(page.getByText('1. Shift and choose cards')).toBeVisible();
+  await page.locator('.log-group').first().locator('summary').click();
+  await expect(page.locator('.log-group').first().locator('.log-entry')).toHaveCount(1);
   await expect(page.getByText(/Bot 2 locked in/)).toHaveCount(0);
   await page.locator('.hand-panel .card-number').first().click();
   await page.getByRole('button', { name: 'LOCK IN PLAN' }).click();
-  await expect(page.getByText(/Bot 2 locked in/)).toBeVisible();
+  await expect(page.getByText(/Bot 2 locked in/).first()).toBeVisible();
   await page.locator('.hand-panel .card-number').first().click();
   await expect(page.getByRole('button', { name: 'DISCARD 1 + END TURN' })).toBeVisible();
   await page.getByRole('button', { name: 'DISCARD 1 + END TURN' }).click();
-  await expect(page.getByText(/Round 2:/)).toBeVisible();
+  await expect(page.getByText(/Round 2:/).first()).toBeVisible();
   const leaveButton = page.getByRole('button', { name: 'LEAVE ROOM' }).first();
   const leaveButtonBox = await leaveButton.boundingBox();
   expect(leaveButtonBox).not.toBeNull();

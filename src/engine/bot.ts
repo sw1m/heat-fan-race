@@ -246,7 +246,7 @@ export function chooseBotReaction(state: GameState, playerId: string): GameActio
 export function advanceBotTurns(input: GameState, random: RandomSource = Math.random): GameState {
   let state = input;
   for (let index = 0; index < BOT_ACTION_LIMIT; index += 1) {
-    if (state.phase === 'FINISHED') return state;
+    if (state.phase === 'FINISHED' || state.winnerId !== null) return state;
     if (state.phase === 'PLANNING') {
       if (!humansHaveSubmitted(state)) return state;
       const bot = state.players.find(

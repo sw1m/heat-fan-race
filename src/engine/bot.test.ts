@@ -170,10 +170,11 @@ describe('rules-following bot', () => {
     );
     const finished = advanceBotTurns(state, fixedRandom);
     expect(finished.phase).toBe('FINISHED');
-    expect(finished.players.every((player) => player.finishRank !== null)).toBe(true);
+    expect(finished.winnerId).not.toBeNull();
+    expect(finished.players.some((player) => player.finishRank !== null)).toBe(true);
   });
 
-  it('keeps four finishers in distinct Hall of Fame positions', () => {
+  it('stops after a winner and keeps actual post-finish landing spaces', () => {
     const state = createInitialGame(
       [
         { ...human, id: 'bot-1', name: 'Bot 1', controller: 'BOT' as const },
@@ -185,8 +186,12 @@ describe('rules-following bot', () => {
     );
     const finished = advanceBotTurns(state, fixedRandom);
     expect(finished.phase).toBe('FINISHED');
-    expect(finished.players.map((player) => player.position.space).sort((a, b) => a - b)).toEqual([
-      41, 42, 43, 44,
-    ]);
+    expect(finished.winnerId).not.toBeNull();
+    const finishers = finished.players.filter((player) => player.finished);
+    expect(finishers.length).toBeGreaterThan(0);
+    expect(finishers.every((player) => player.position.space >= finished.track.finishSpace)).toBe(
+      true,
+    );
+    expect(finishers.every((player) => player.finishProgress === player.position.space)).toBe(true);
   });
 });
