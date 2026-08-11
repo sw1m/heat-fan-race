@@ -113,6 +113,12 @@ export async function loadRemoteRoom(roomId: string): Promise<RemoteRoom> {
   return callRpc('get_room_snapshot', { p_room_id: roomId });
 }
 
+export async function leaveRemoteRoom(roomId: string): Promise<void> {
+  if (!supabase) throw new Error('Realtime backend is not configured.');
+  const { error } = await supabase.rpc('leave_room', { p_room_id: roomId });
+  if (error) throw new Error(error.message);
+}
+
 export function subscribeToRoom(roomId: string, onChange: () => void): () => void {
   if (!supabase) return () => undefined;
   const channel = supabase
