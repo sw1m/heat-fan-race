@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { createBeginnerDeck, countCardKinds, drawCards, shuffle } from './deck';
 import { applyGameAction, createInitialGame, getPublicState } from './engine';
 import { USA_BEGINNER_TRACK } from './constants';
-import { chooseLandingPosition, crossedCorners, isAdjacentOrBehind, positionSort } from './track';
+import {
+  chooseLandingPosition,
+  crossedCorners,
+  distanceToNextCorner,
+  isAdjacentOrBehind,
+  nextCorner,
+  positionSort,
+} from './track';
 import type { Card, GameState, PlayerState } from './types';
 
 const fixedRandom = () => 0.42;
@@ -139,6 +146,14 @@ describe('planning, shifting, and turn order', () => {
     if (state.phase === 'PLAYER_REACTION') state = pass(state, state.activePlayerId!);
     expect(state.phase).toBe('PLANNING');
     expect(state.round).toBe(2);
+  });
+});
+
+describe('track display helpers', () => {
+  it('finds the next corner and its remaining distance', () => {
+    expect(nextCorner(USA_BEGINNER_TRACK, 4)?.id).toBe('corner-1');
+    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 4)).toBe(6);
+    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 36)).toBeNull();
   });
 });
 
