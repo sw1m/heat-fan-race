@@ -14,7 +14,7 @@ The authority used for these interpretations is the [Days of Wonder Heat page](h
 
 Gear changes and card selection are simultaneous. A normal shift changes one gear position. A two-position shift is legal only when the engine can pay one Heat immediately. Each player plays exactly the number of cards shown by the gear, subject to the cluttered-hand exception.
 
-After all selections are locked, players resolve from the car nearest the Race Line to the last car. A car may pass through other cars, but its landing space may not contain more than two cars. Two cars can share a space only by occupying its two lanes; a full space is blocked. When blocked, the engine searches backward for the closest legal landing space and preserves the car's current lane if it cannot move.
+After all selections are locked, players resolve from the car nearest the Race Line to the last car. A car may pass through other cars, but its landing space may not contain more than two cars. Two cars can share a space only by occupying its two lanes; a full space is blocked. When blocked, the engine searches backward for the closest legal landing space and uses the Race Line lane whenever it is open. Spinouts apply the same occupancy rule while scanning backward from the first space before the corner, so simultaneous spinouts cannot create an overfilled space.
 
 ## Speed, Stress, Boost, and Heat
 

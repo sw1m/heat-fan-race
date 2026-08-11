@@ -3,6 +3,7 @@ import { createBeginnerDeck, drawCards, replenishHand, shuffle } from './deck';
 import {
   crossedCorners,
   chooseLandingPosition,
+  chooseSpinoutPosition,
   finishSort,
   isAdjacentOrBehind,
   orderedPlayers,
@@ -62,6 +63,12 @@ function basicSpeed(card: Card): number {
 
 function isBasicSpeed(card: Card): boolean {
   return card.kind === 'BASIC';
+}
+
+function canSlipstream(state: GameState, player: PlayerState): boolean {
+  return (
+    isAdjacentOrBehind(state.players, player) && player.position.space + 2 < state.track.finishSpace
+  );
 }
 
 export function isOptionalDiscardCard(card: Card): boolean {
@@ -170,8 +177,8 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
     adrenalineCooldownAvailable: adrenaline,
     boostAvailable: player.gear >= 3 && player.engine.length > 0,
     cooldownAvailable: player.gear === 1 ? 3 : player.gear === 2 ? 1 : 0,
-    slipstreamAvailable:
-      isAdjacentOrBehind(state.players, player) && moved.end < state.track.finishSpace,
+    slipstreamAvailable: canSlipstream(state, player),
+    slipstreamUsed: false,
     crossedCornerIds: corners.map((corner) => corner.id),
   };
   log(
@@ -195,6 +202,7 @@ function openGearReaction(state: GameState): void {
   ) {
     pending.options.unshift('COOLDOWN');
   }
+  pending.slipstreamAvailable = !pending.slipstreamUsed && canSlipstream(state, player);
   if (pending.slipstreamAvailable) pending.options.unshift('SLIPSTREAM');
 }
 
@@ -233,12 +241,12 @@ function applyCornerChecks(
     player.engine = [];
     player.gear = 1;
     player.finishProgress = null;
-    player.position = chooseLandingPosition(
+    player.position = chooseSpinoutPosition(
       state.players,
-      { space: corner.lineSpace - 1, lane: player.position.lane },
-      0,
+      corner.lineSpace,
       state.track,
       player.id,
+      player.position,
     );
     const stressCount = originalGear >= 3 ? 2 : 1;
     for (let index = 0; index < stressCount; index += 1)
@@ -535,6 +543,7 @@ export function applyGameAction(
       state.pending.movedSpace = player.position.space;
       refreshCrossedCorners(state);
       state.pending.slipstreamAvailable = false;
+      state.pending.slipstreamUsed = true;
       log(state, `${player.name} slipstreams 2 spaces.`, player.id);
       openGearReaction(state);
       return state;
