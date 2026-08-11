@@ -287,6 +287,10 @@ function finishPlayerTurn(state: GameState, random: RandomSource): void {
   const alreadyRanked = state.players.filter((candidate) => candidate.finishRank !== null).length;
   justFinished.forEach((candidate, index) => {
     candidate.finishRank = alreadyRanked + index + 1;
+    candidate.position = {
+      space: state.track.finishSpace + candidate.finishRank,
+      lane: candidate.position.lane,
+    };
   });
   if (state.winnerId === null && justFinished.length > 0) state.winnerId = justFinished[0].id;
   if (state.players.every((candidate) => candidate.finished)) {

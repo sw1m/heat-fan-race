@@ -78,4 +78,21 @@ describe('rules-following bot', () => {
     expect(finished.phase).toBe('FINISHED');
     expect(finished.players.every((player) => player.finishRank !== null)).toBe(true);
   });
+
+  it('keeps four finishers in distinct Hall of Fame positions', () => {
+    const state = createInitialGame(
+      [
+        { ...human, id: 'bot-1', name: 'Bot 1', controller: 'BOT' as const },
+        bot,
+        { id: 'bot-3', name: 'Bot 3', seat: 2, color: '#245c8c', controller: 'BOT' as const },
+        { id: 'bot-4', name: 'Bot 4', seat: 3, color: '#2f7a54', controller: 'BOT' as const },
+      ],
+      fixedRandom,
+    );
+    const finished = advanceBotTurns(state, fixedRandom);
+    expect(finished.phase).toBe('FINISHED');
+    expect(finished.players.map((player) => player.position.space).sort((a, b) => a - b)).toEqual([
+      41, 42, 43, 44,
+    ]);
+  });
 });

@@ -482,6 +482,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     if (state.phase === 'PLAYER_REACTION') state = pass(state, 'p2');
     expect(state.players[0].finished).toBe(true);
     expect(state.players[0].finishRank).toBe(1);
+    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace + 1);
   });
 
   it('retains the complete event log for race review', () => {
@@ -526,6 +527,8 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.phase).toBe('FINISHED');
     expect(state.players[0].finishProgress).toBe(43);
     expect(state.players[1].finishProgress).toBe(40);
+    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace + 1);
+    expect(state.players[1].position.space).toBe(USA_BEGINNER_TRACK.finishSpace + 2);
     expect(state.players[0].finishRank).toBe(1);
     expect(state.players[1].finishRank).toBe(2);
     expect(state.winnerId).toBe('p1');
