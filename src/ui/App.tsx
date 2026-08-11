@@ -1101,7 +1101,10 @@ function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
   const raceFinished = game.phase === 'FINISHED';
   const order = orderedTurnPlayers(game);
-  const leaderSpace = Math.max(...game.players.map((player) => player.position.space), 0);
+  const activePlayers = game.players.filter((player) => !player.finished);
+  const leaderSpace = raceFinished
+    ? game.track.finishSpace
+    : Math.max(...activePlayers.map((player) => player.position.space), 0);
   const upcomingCorner = game.track.corners.find((corner) => corner.lineSpace > leaderSpace);
 
   return (
@@ -1196,7 +1199,9 @@ function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
 
 function TrackBoard({ game }: { game: GameState }): JSX.Element {
   const positions = new Map(
-    game.players.map((player) => [`${player.position.space}-${player.position.lane}`, player]),
+    game.players
+      .filter((player) => !player.finished)
+      .map((player) => [`${player.position.space}-${player.position.lane}`, player]),
   );
   const startingSpace = Math.min(0, ...game.track.grid.map((position) => position.space));
   const trackSpaces = Array.from(
