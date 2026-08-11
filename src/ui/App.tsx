@@ -62,14 +62,16 @@ function carColorName(color: string): string {
 }
 
 const CAR_MARKER_FILTERS: Record<string, string> = {
-  '#d44735': 'hue-rotate(0deg) saturate(1)',
-  '#ee9a2f': 'hue-rotate(24deg) saturate(1.08)',
+  '#d44735': 'hue-rotate(0deg) saturate(1.25) contrast(1.08)',
+  '#ee9a2f': 'hue-rotate(42deg) saturate(1.35) brightness(1.05)',
   '#245c8c': 'hue-rotate(202deg) saturate(0.95)',
   '#2f7a54': 'hue-rotate(138deg) saturate(0.9)',
 };
 
 function carMarkerFilter(color: string): string {
-  return CAR_MARKER_FILTERS[color.toLowerCase()] ?? 'hue-rotate(0deg) saturate(1)';
+  return (
+    CAR_MARKER_FILTERS[color.toLowerCase()] ?? 'hue-rotate(0deg) saturate(1.25) contrast(1.08)'
+  );
 }
 
 function cardDisplayValue(card: Card): string {
@@ -646,7 +648,7 @@ function RaceView({
   const [gear, setGear] = useState(local.gear);
   const [selected, setSelected] = useState<string[]>([]);
   const [discardSelection, setDiscardSelection] = useState<string[]>([]);
-  const [handSort, setHandSort] = useState<HandSortMode>('MANUAL');
+  const [handSort, setHandSort] = useState<HandSortMode>('NUMERICAL');
   const [manualOrder, setManualOrder] = useState<string[]>([]);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
   const [reviewedFinish, setReviewedFinish] = useState(false);
