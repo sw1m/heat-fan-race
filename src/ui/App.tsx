@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS } from '../engine/constants';
+import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState } from '../engine/engine';
 import type { GameAction, GameState } from '../engine/types';
 import {
@@ -15,7 +16,7 @@ import {
   type RoomPlayer,
 } from '../lib/supabase';
 import {
-  addLocalPreviewSeat,
+  addLocalBotSeat,
   createLocalRoom,
   getLocalRoom,
   startLocalRoom,
@@ -57,6 +58,7 @@ function localPublicPlayers(game: GameState): RoomPlayer[] {
     discardCount: player.discardCount,
     finished: player.finished,
     finishRank: player.finishRank,
+    isBot: player.controller === 'BOT',
   }));
 }
 
@@ -90,6 +92,20 @@ export function App(): JSX.Element {
         })
         .catch(() => setReconnecting(false));
     });
+  }, [room]);
+
+  useEffect(() => {
+    if (!room || isRemoteRoom(room) || !room.game) return;
+    const game = advanceBotTurns(room.game);
+    if (game === room.game) return;
+    const next: LocalRoom = {
+      ...room,
+      game,
+      status: game.phase === 'FINISHED' ? 'FINISHED' : 'RACING',
+      players: localPublicPlayers(game),
+    };
+    setLocalRoom(next);
+    setRoom(next);
   }, [room]);
 
   const createRoom = useCallback(
@@ -163,9 +179,9 @@ export function App(): JSX.Element {
     }
   }, [room]);
 
-  const onAddPreviewSeat = useCallback(() => {
+  const onAddBotSeat = useCallback(() => {
     if (!room || isRemoteRoom(room)) return;
-    setRoom(addLocalPreviewSeat(room));
+    setRoom(addLocalBotSeat(room));
   }, [room]);
 
   const onAction = useCallback(
@@ -207,7 +223,7 @@ export function App(): JSX.Element {
       reconnecting={reconnecting}
       error={error}
       onStart={onStart}
-      onAddPreviewSeat={onAddPreviewSeat}
+      onAddBotSeat={onAddBotSeat}
       onAction={onAction}
       isHost={
         room.hostPlayerId === identity || (!isRemoteRoom(room) && room.players[0]?.id === identity)
@@ -339,7 +355,7 @@ function RoomScreen({
   reconnecting,
   error,
   onStart,
-  onAddPreviewSeat,
+  onAddBotSeat,
   onAction,
   isHost,
   onCopyInvite,
@@ -352,7 +368,7 @@ function RoomScreen({
   reconnecting: boolean;
   error: string;
   onStart: () => Promise<void>;
-  onAddPreviewSeat: () => void;
+  onAddBotSeat: () => void;
   onAction: (action: GameAction) => Promise<void>;
   isHost: boolean;
   onCopyInvite: () => void;
@@ -390,7 +406,7 @@ function RoomScreen({
           players={players}
           isHost={isHost}
           onStart={onStart}
-          onAddPreviewSeat={onAddPreviewSeat}
+          onAddBotSeat={onAddBotSeat}
           onLeave={onLeave}
         />
       ) : game ? (
@@ -414,14 +430,14 @@ function LobbyView({
   players,
   isHost,
   onStart,
-  onAddPreviewSeat,
+  onAddBotSeat,
   onLeave,
 }: {
   room: ActiveRoom;
   players: RoomPlayer[];
   isHost: boolean;
   onStart: () => Promise<void>;
-  onAddPreviewSeat: () => void;
+  onAddBotSeat: () => void;
   onLeave: () => void;
 }): JSX.Element {
   return (
@@ -448,11 +464,13 @@ function LobbyView({
               <div className="seat-name">{player ? player.nickname : 'OPEN SEAT'}</div>
               <div className="seat-status">
                 {player
-                  ? player.isHost
-                    ? 'HOST · READY'
-                    : player.connected
-                      ? 'CONNECTED'
-                      : 'RECONNECTING'
+                  ? player.isBot
+                    ? 'AI DRIVER · READY'
+                    : player.isHost
+                      ? 'HOST · READY'
+                      : player.connected
+                        ? 'CONNECTED'
+                        : 'RECONNECTING'
                   : 'WAITING FOR RACER'}
               </div>
             </div>
@@ -462,7 +480,7 @@ function LobbyView({
       <div className="lobby-actions">
         <div className="lobby-note">
           {!isRemoteRoom(room) && players.length < MAX_PLAYERS
-            ? 'Preview mode: add seats to exercise the table locally.'
+            ? 'Solo test mode: add AI drivers, then start the race.'
             : `${players.length}/${MAX_PLAYERS} seats occupied.`}
         </div>
         <div className="button-row">
@@ -470,8 +488,8 @@ function LobbyView({
             LEAVE ROOM
           </button>
           {!isRemoteRoom(room) && players.length < MAX_PLAYERS && (
-            <button className="secondary-button" onClick={onAddPreviewSeat}>
-              ADD PREVIEW SEAT
+            <button className="secondary-button" onClick={onAddBotSeat}>
+              ADD AI PLAYER
             </button>
           )}
           {isHost && (
@@ -570,6 +588,7 @@ function RaceView({
                   🏎️
                 </span>
                 <span className="stand-name">
+                  {player.controller === 'BOT' ? '🤖 ' : ''}
                   {player.name}
                   {player.id === local.id ? ' (you)' : ''}
                 </span>
