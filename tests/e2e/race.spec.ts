@@ -25,18 +25,18 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
   await expect(page.locator('.stand-car')).toHaveCount(4);
   await expect(page.locator('.starting-space .car-marker')).toHaveCount(2);
-  const carStyles = await page
-    .locator('.stand-car .car-token')
-    .evaluateAll((elements) =>
-      elements.map((element) => getComputedStyle(element).backgroundColor),
-    );
-  expect(new Set(carStyles).size).toBe(4);
-  const trackCarStyles = await page
-    .locator('.car-marker')
-    .evaluateAll((elements) =>
-      elements.map((element) => getComputedStyle(element).backgroundColor),
-    );
-  expect(new Set(trackCarStyles).size).toBe(4);
+  const carMarkers = await page.locator('.stand-car .car-token').evaluateAll((elements) => ({
+    sources: [...new Set(elements.map((element) => element.getAttribute('src')))],
+    filters: [...new Set(elements.map((element) => getComputedStyle(element).filter))],
+  }));
+  expect(carMarkers.sources).toHaveLength(1);
+  expect(carMarkers.filters).toHaveLength(4);
+  const trackCarMarkers = await page.locator('.car-marker').evaluateAll((elements) => ({
+    sources: [...new Set(elements.map((element) => element.getAttribute('src')))],
+    filters: [...new Set(elements.map((element) => getComputedStyle(element).filter))],
+  }));
+  expect(trackCarMarkers.sources).toHaveLength(1);
+  expect(trackCarMarkers.filters).toHaveLength(4);
   await page.getByRole('button', { name: /SHIFT/ }).click();
   await expect(page.getByText('1. Shift and choose cards')).toBeVisible();
   await expect(page.getByText(/Bot 2 locked in/)).toHaveCount(0);

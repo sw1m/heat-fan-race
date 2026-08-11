@@ -431,67 +431,12 @@ h2 {
   place-items: center;
 }
 .car-token {
-  position: relative;
   display: inline-block;
   flex: 0 0 auto;
-  width: 30px;
-  height: 14px;
-  border: 2px solid #191817;
-  border-radius: 8px 11px 4px 4px;
-  background: currentColor;
-  color: var(--car-color, #b9aa8e);
-  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.5));
-}
-.car-token::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  top: 2px;
-  right: -6px;
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 8px solid currentColor;
-}
-.car-token::before {
-  content: '';
-  position: absolute;
-  top: -7px;
-  left: 7px;
-  width: 14px;
-  height: 8px;
-  border: 2px solid #191817;
-  border-bottom: 0;
-  border-radius: 8px 8px 0 0;
-  background: currentColor;
-}
-.car-token-window {
-  position: absolute;
-  z-index: 2;
-  top: -4px;
-  left: 10px;
-  width: 8px;
-  height: 5px;
-  border: 1px solid #191817;
-  background: #d6e5df;
-  transform: skewX(-18deg);
-}
-.car-token-wheel {
-  position: absolute;
-  z-index: 3;
-  bottom: -5px;
-  width: 8px;
-  height: 8px;
-  border: 2px solid #191817;
-  border-radius: 50%;
-  background: #191817;
-}
-.car-token-wheel-rear {
-  left: 3px;
-}
-.car-token-wheel-front {
-  right: 3px;
+  width: 38px;
+  height: auto;
+  object-fit: contain;
+  filter: var(--car-filter, hue-rotate(0deg) saturate(1)) drop-shadow(0 2px 1px rgba(0, 0, 0, 0.5));
 }
 .seat-car .car-token {
   transform: scale(1.35);
