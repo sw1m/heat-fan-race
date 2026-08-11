@@ -12,6 +12,10 @@ test('a solo player can add a bot and start a local test race', async ({ page })
   await page.getByRole('button', { name: 'START RACE' }).click();
   await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
+  await page.getByRole('button', { name: 'LEAVE ROOM' }).first().click();
+  await expect(page.getByLabel('Nickname')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('ENTER THE PADDOCK')).toBeVisible();
 });
 
 test('two browser contexts can create, join, start, and observe a synchronized room when Supabase is configured', async ({
