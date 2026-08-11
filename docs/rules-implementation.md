@@ -20,7 +20,7 @@ After all selections are locked, players resolve from the car nearest the Race L
 
 Basic and the starting 0/5 contribute their printed speed when played normally. A Stress card reveals cards from that player’s draw deck until a Basic Speed card appears; non-Basic reveals, including starting 0/5 and Heat, are discarded and do not supply the Stress speed. Boost pays one engine Heat, reveals by the same Basic-Speed process, adds that speed, and moves again. Heat paid from the engine goes to discard; it is not removed from the game.
 
-Gear 1 provides up to three Cooldown and gear 2 up to one Cooldown. Cooldown moves Heat cards from hand back to the engine. V1 exposes Boost in gears 3–4 and Cooldown in gears 1–2, matching the basic player-mat access model. Adrenaline is available to the last-place active car in the four-player beginner configuration: it may add one speed and/or one Cooldown, and cannot be saved.
+Gear 1 provides up to three Cooldown and gear 2 up to one Cooldown. Cooldown moves Heat cards from hand back to the six-card engine, and cannot overfill it. V1 exposes Boost in gears 3–4 and Cooldown in gears 1–2, matching the basic player-mat access model. Adrenaline is available to the last active car in a two-to-four-player race, or the last two active cars in a five-to-six-player race: it may add one speed and/or one Cooldown, and cannot be saved.
 
 ## Corners and Slipstream
 

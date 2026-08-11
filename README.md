@@ -6,7 +6,7 @@ This project is not affiliated with or endorsed by Days of Wonder, Asmodee, Asmo
 
 ## V1 scope
 
-V1 supports two to four racers in one private USA one-lap learning race, including deterministic rules-following AI seats for solo local testing. It includes the basic speed deck, Stress, the three standard starting cards (0, 5, and the extra Heat), six engine Heat, seven-card hands, gears 1–4, normal and paid two-position shifting, simultaneous planning, ordered movement, Adrenaline, Boost, Cooldown, Slipstream, corner checks, blocking, spinouts, reshuffling, finish ranking, refresh/rejoin storage, and a host-controlled lobby. Garage upgrades, Weather, Road Conditions, Events, Championship mode, Legends, strategic AI difficulty levels, chat, sound, and multiple tracks are intentionally out of scope.
+V1 supports two to six racers in one private USA one-lap learning race, including deterministic rules-following AI seats for solo local testing. It includes the basic speed deck, Stress, the three standard starting cards (0, 5, and the extra Heat), six engine Heat, seven-card hands, gears 1–4, normal and paid two-position shifting, simultaneous planning, ordered movement, Adrenaline, Boost, Cooldown, Slipstream, corner checks, blocking, spinouts, reshuffling, finish ranking, refresh/rejoin storage, and a host-controlled lobby. Garage upgrades, Weather, Road Conditions, Events, Championship mode, Legends, strategic AI difficulty levels, chat, sound, and multiple tracks are intentionally out of scope.
 
 ## Run locally
 
@@ -32,7 +32,7 @@ npm run test:e2e
 
 1. Create a Supabase project at [supabase.com](https://supabase.com/).
 2. In Authentication → Providers, enable Anonymous sign-ins.
-3. Apply `supabase/migrations/202608100001_initial.sql` in the SQL editor or with the Supabase CLI.
+3. Apply every file in `supabase/migrations/` in filename order (including the six-player migration) in the SQL editor or with the Supabase CLI.
 4. Confirm Realtime is enabled and the migration’s `room_players` and `room_events` tables are present in the `supabase_realtime` publication.
 5. Copy the project URL and public anon key into `.env.local` using `.env.example`.
 

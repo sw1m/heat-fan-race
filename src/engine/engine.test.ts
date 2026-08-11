@@ -21,6 +21,11 @@ const players = [
   { id: 'p3', name: 'Gold', seat: 2, color: '#ee9a2f' },
   { id: 'p4', name: 'Green', seat: 3, color: '#2f7a54' },
 ];
+const sixPlayers = [
+  ...players,
+  { id: 'p5', name: 'Purple', seat: 4, color: '#7b4d9e' },
+  { id: 'p6', name: 'Teal', seat: 5, color: '#2b9db2' },
+];
 
 function cardIds(state: GameState, playerId: string, count = 1): string[] {
   return state.players
@@ -85,6 +90,19 @@ describe('planning, shifting, and turn order', () => {
         (player) => player.gear === 1 && player.hand.length === 7 && player.engine.length === 6,
       ),
     ).toBe(true);
+  });
+
+  it('supports six starting-grid seats and gives the last two cars Adrenaline', () => {
+    const state = createInitialGame(sixPlayers, fixedRandom);
+    expect(state.players.map((player) => player.position)).toEqual([
+      { space: 0, lane: 0 },
+      { space: 0, lane: 1 },
+      { space: -1, lane: 0 },
+      { space: -1, lane: 1 },
+      { space: -2, lane: 0 },
+      { space: -2, lane: 1 },
+    ]);
+    expect(state.adrenalineEligibleIds).toEqual(['p5', 'p6']);
   });
 
   it('rejects duplicate submissions and illegal card ownership', () => {
@@ -322,7 +340,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
   it('permits cooldown from hand and keeps public state free of private card arrays', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     state.players[0].engine = state.players[0].engine.slice(0, 5);
-    const heat: Card = { id: 'hand-heat', kind: 'HEAT' };
+    const heat: Card = { id: 'hand-heat', kind: 'STARTING_HEAT' };
     state.players[0].hand = [state.players[0].hand.find((card) => card.kind === 'BASIC')!, heat];
     state.players[1].hand = [state.players[1].hand[0]];
     state = applyGameAction(
@@ -340,6 +358,25 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     const publicState = getPublicState(state, 'p1');
     expect(JSON.stringify(publicState)).not.toContain('hand-heat');
     expect(JSON.stringify(publicState)).not.toContain('cardIds');
+  });
+
+  it('treats the starting Heat card as Heat when a hand is cluttered', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].hand = [{ id: 'starter-heat', kind: 'STARTING_HEAT' }];
+    state.players[1].hand = [{ id: 'other-one', kind: 'BASIC', value: 1 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['starter-heat'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['other-one'] },
+      fixedRandom,
+    );
+    expect(state.players[0].position.space).toBe(0);
+    expect(state.players[0].discard.map((card) => card.id)).toContain('starter-heat');
+    expect(state.log.some((entry) => entry.text.includes('cluttered hand'))).toBe(true);
   });
 
   it('ranks finishers by finish order and keeps the winner deterministic', () => {

@@ -1,4 +1,10 @@
-import { USA_BEGINNER_TRACK, USA_ENGINE_HEAT, STARTING_HAND_SIZE } from './constants';
+import {
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  STARTING_HAND_SIZE,
+  USA_BEGINNER_TRACK,
+  USA_ENGINE_HEAT,
+} from './constants';
 import { createBeginnerDeck, drawCards, replenishHand, shuffle } from './deck';
 import {
   crossedCorners,
@@ -40,6 +46,14 @@ function payHeat(player: PlayerState): boolean {
   return true;
 }
 
+function isHeatCard(card: Card): boolean {
+  return card.kind === 'HEAT' || card.kind === 'STARTING_HEAT';
+}
+
+function canCoolDown(player: PlayerState, count: number): boolean {
+  return count > 0 && player.engine.length < USA_ENGINE_HEAT && player.hand.some(isHeatCard);
+}
+
 function addHeatToEngine(player: PlayerState, count: number): number {
   let moved = 0;
   for (
@@ -47,7 +61,7 @@ function addHeatToEngine(player: PlayerState, count: number): number {
     index >= 0 && moved < count && player.engine.length < USA_ENGINE_HEAT;
     index -= 1
   ) {
-    if (player.hand[index].kind === 'HEAT' || player.hand[index].kind === 'STARTING_HEAT') {
+    if (isHeatCard(player.hand[index])) {
       player.engine.push(player.hand.splice(index, 1)[0]);
       moved += 1;
     }
@@ -154,7 +168,7 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
     selected.push(player.hand.splice(cardIndex, 1)[0]);
   }
   player.played.push(...selected);
-  const cluttered = selected.some((card) => card.kind === 'HEAT');
+  const cluttered = selected.some(isHeatCard);
   if (cluttered) {
     player.gear = 1;
     discardPlayedCards(player);
@@ -170,10 +184,7 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
   const moved = movePlayer(state, player, speed);
   const corners = crossedCorners(state.track, moved.start, moved.end);
   const adrenaline = availableAdrenaline(state, player.id);
-  const adrenalineCooldownAvailable =
-    adrenaline &&
-    player.engine.length < USA_ENGINE_HEAT &&
-    player.hand.some((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT');
+  const adrenalineCooldownAvailable = adrenaline && canCoolDown(player, 1);
   state.pending = {
     kind: adrenaline ? 'ADRENALINE' : 'GEAR_REACTION',
     playerId: player.id,
@@ -210,11 +221,7 @@ function openGearReaction(state: GameState): void {
   pending.kind = 'GEAR_REACTION';
   pending.options = ['PASS_REACTION'];
   if (pending.boostAvailable) pending.options.unshift('BOOST');
-  if (
-    pending.cooldownAvailable > 0 &&
-    player.engine.length < USA_ENGINE_HEAT &&
-    player.hand.some((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT')
-  ) {
+  if (pending.cooldownAvailable > 0 && canCoolDown(player, pending.cooldownAvailable)) {
     pending.options.unshift('COOLDOWN');
   }
   pending.slipstreamAvailable = !pending.slipstreamUsed && canSlipstream(state, player);
@@ -348,7 +355,8 @@ function beginPlanning(state: GameState, random: RandomSource): void {
   state.submitted = {};
   const active = state.players.filter((player) => !player.finished);
   const ordered = [...active].sort(positionSort);
-  state.adrenalineEligibleIds = ordered.length > 0 ? [ordered[ordered.length - 1].id] : [];
+  const adrenalineCount = ordered.length >= 5 ? 2 : 1;
+  state.adrenalineEligibleIds = ordered.slice(-adrenalineCount).map((player) => player.id);
   log(state, `Round ${state.round}: shift gears and choose cards simultaneously.`);
   void random;
 }
@@ -434,6 +442,9 @@ export function createInitialGame(
   }>,
   random: RandomSource = Math.random,
 ): GameState {
+  if (playerSpecs.length < MIN_PLAYERS || playerSpecs.length > MAX_PLAYERS) {
+    throw new Error(`A race needs ${MIN_PLAYERS}-${MAX_PLAYERS} players.`);
+  }
   const players: PlayerState[] = playerSpecs.map((spec, index) => {
     const deck = shuffle(createBeginnerDeck(spec.id), random);
     const player: PlayerState = {
@@ -472,7 +483,8 @@ export function createInitialGame(
     log: [],
   };
   const ordered = orderedPlayers(state.players);
-  state.adrenalineEligibleIds = ordered.length > 0 ? [ordered[ordered.length - 1].id] : [];
+  const adrenalineCount = ordered.length >= 5 ? 2 : 1;
+  state.adrenalineEligibleIds = ordered.slice(-adrenalineCount).map((player) => player.id);
   log(state, 'Race ready: everyone starts in 1st gear with seven cards.');
   return state;
 }
@@ -523,7 +535,7 @@ export function applyGameAction(
         !state.pending.adrenalineCooldownAvailable
       )
         throw new Error('Adrenaline cooldown is unavailable.');
-      if (player.engine.length >= USA_ENGINE_HEAT)
+      if (!canCoolDown(player, 1))
         throw new Error('Adrenaline cooldown is unavailable while the engine is full.');
       state.pending.adrenalineCooldownAvailable = false;
       if (addHeatToEngine(player, 1) !== 1)
@@ -555,7 +567,7 @@ export function applyGameAction(
         state.pending.cooldownAvailable <= 0
       )
         throw new Error('Cooldown is unavailable.');
-      if (player.engine.length >= USA_ENGINE_HEAT)
+      if (!canCoolDown(player, 1))
         throw new Error('Cooldown is unavailable while the engine is full.');
       const cooled = addHeatToEngine(player, state.pending.cooldownAvailable);
       if (cooled === 0) throw new Error('Cooldown needs Heat in your hand.');
