@@ -4,6 +4,7 @@ import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState, isOptionalDiscardCard } from '../engine/engine';
 import { distanceToNextCorner, nextCorner } from '../engine/track';
 import type { Card, GameAction, GameState } from '../engine/types';
+import carMarkerAsset from '../assets/heat-race-car.png';
 import {
   createRemoteRoom,
   ensureAnonymousIdentity,
@@ -60,6 +61,17 @@ function carColorName(color: string): string {
   return CAR_COLOR_NAMES[color as PlayerColor] ?? 'Custom';
 }
 
+const CAR_MARKER_FILTERS: Record<string, string> = {
+  '#d44735': 'hue-rotate(0deg) saturate(1)',
+  '#ee9a2f': 'hue-rotate(24deg) saturate(1.08)',
+  '#245c8c': 'hue-rotate(202deg) saturate(0.95)',
+  '#2f7a54': 'hue-rotate(138deg) saturate(0.9)',
+};
+
+function carMarkerFilter(color: string): string {
+  return CAR_MARKER_FILTERS[color.toLowerCase()] ?? 'hue-rotate(0deg) saturate(1)';
+}
+
 function cardDisplayValue(card: Card): string {
   if (card.kind === 'STRESS') return 'STRESS';
   if (card.kind === 'HEAT' || card.kind === 'STARTING_HEAT') return 'HEAT';
@@ -78,11 +90,13 @@ function cardTopSymbol(card: Card): string {
 
 function CarToken({ color, className = '' }: { color: string; className?: string }): JSX.Element {
   return (
-    <span className={`car-token ${className}`.trim()} style={{ color }} aria-hidden="true">
-      <span className="car-token-window" />
-      <span className="car-token-wheel car-token-wheel-rear" />
-      <span className="car-token-wheel car-token-wheel-front" />
-    </span>
+    <img
+      className={`car-token ${className}`.trim()}
+      src={carMarkerAsset}
+      style={{ '--car-filter': carMarkerFilter(color) } as CSSProperties}
+      alt=""
+      aria-hidden="true"
+    />
   );
 }
 
