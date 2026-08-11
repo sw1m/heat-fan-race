@@ -76,6 +76,16 @@ function cardTopSymbol(card: Card): string {
   return '🔥';
 }
 
+function CarToken({ color, className = '' }: { color: string; className?: string }): JSX.Element {
+  return (
+    <span className={`car-token ${className}`.trim()} style={{ color }} aria-hidden="true">
+      <span className="car-token-window" />
+      <span className="car-token-wheel car-token-wheel-rear" />
+      <span className="car-token-wheel car-token-wheel-front" />
+    </span>
+  );
+}
+
 function localPublicPlayers(game: GameState): RoomPlayer[] {
   const publicState = getPublicState(game, game.players[0]?.id ?? '');
   return publicState.players.map((player) => ({
@@ -553,8 +563,8 @@ function LobbyView({
           return (
             <div className={`seat-card ${player ? 'occupied' : ''}`} key={index}>
               <div className="seat-number">0{index + 1}</div>
-              <div className="seat-car" style={{ color: player?.color ?? '#b9aa8e' }}>
-                🏎️
+              <div className="seat-car">
+                <CarToken color={player?.color ?? '#b9aa8e'} />
               </div>
               <div className="seat-name">{player ? player.nickname : 'OPEN SEAT'}</div>
               <div className="seat-status">
@@ -713,8 +723,8 @@ function RaceView({
                 key={player.id}
               >
                 <span className="stand-rank">{player.finishRank ?? index + 1}</span>
-                <span className="stand-car" style={{ color: player.color }}>
-                  🏎️
+                <span className="stand-car">
+                  <CarToken color={player.color} />
                 </span>
                 <span className="stand-name">
                   {player.controller === 'BOT' ? '🤖 ' : ''}
@@ -982,8 +992,8 @@ function RaceView({
                 .sort((a, b) => (a.finishRank ?? 99) - (b.finishRank ?? 99))
                 .map((player) => (
                   <div key={player.id}>
-                    <strong>{player.finishRank}.</strong>{' '}
-                    <span style={{ color: player.color }}>🏎️</span> {player.name}
+                    <strong>{player.finishRank}.</strong> <CarToken color={player.color} />{' '}
+                    {player.name}
                   </div>
                 ))}
             </div>
@@ -1231,9 +1241,7 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                               ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
                               : `TO FINISH ${game.track.finishSpace - player.position.space}`}
                         </span>
-                        <span className="car-marker" style={{ color: player.color }}>
-                          🏎️
-                        </span>
+                        <CarToken color={player.color} className="car-marker" />
                       </span>
                     )}
                     {space % 5 === 0 && <small>{space}</small>}

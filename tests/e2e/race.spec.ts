@@ -19,9 +19,17 @@ test('a solo player can add a bot and start a local test race', async ({ page })
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
   await expect(page.locator('.stand-car')).toHaveCount(2);
   const carStyles = await page
-    .locator('.stand-car')
-    .evaluateAll((elements) => elements.map((element) => element.getAttribute('style')));
+    .locator('.stand-car .car-token')
+    .evaluateAll((elements) =>
+      elements.map((element) => getComputedStyle(element).backgroundColor),
+    );
   expect(new Set(carStyles).size).toBe(2);
+  const trackCarStyles = await page
+    .locator('.car-marker')
+    .evaluateAll((elements) =>
+      elements.map((element) => getComputedStyle(element).backgroundColor),
+    );
+  expect(new Set(trackCarStyles).size).toBe(2);
   await page.getByRole('button', { name: /SHIFT/ }).click();
   await expect(page.getByText('1. Shift and choose cards')).toBeVisible();
   await expect(page.getByText(/Bot 2 locked in/)).toHaveCount(0);

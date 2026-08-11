@@ -426,8 +426,63 @@ h2 {
   letter-spacing: 0.12em;
 }
 .seat-car {
-  font-size: 42px;
-  filter: saturate(0.9);
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+}
+.car-token {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 14px;
+  border: 2px solid #191817;
+  border-radius: 8px 11px 4px 4px;
+  background: currentColor;
+  color: var(--car-color, #b9aa8e);
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.5));
+}
+.car-token::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 7px;
+  width: 14px;
+  height: 8px;
+  border: 2px solid #191817;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: currentColor;
+}
+.car-token-window {
+  position: absolute;
+  z-index: 2;
+  top: -4px;
+  left: 10px;
+  width: 8px;
+  height: 5px;
+  border: 1px solid #191817;
+  background: #d6e5df;
+  transform: skewX(-18deg);
+}
+.car-token-wheel {
+  position: absolute;
+  z-index: 3;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #191817;
+  border-radius: 50%;
+  background: #191817;
+}
+.car-token-wheel-rear {
+  left: 3px;
+}
+.car-token-wheel-front {
+  right: 3px;
+}
+.seat-car .car-token {
+  transform: scale(1.35);
 }
 .seat-name {
   font-weight: 950;
@@ -780,9 +835,8 @@ h2 {
   font-size: 8px;
 }
 .car-marker {
-  font-size: 26px;
-  line-height: 1;
-  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.5));
+  transform: scale(0.9);
+  transform-origin: center;
   z-index: 2;
 }
 .car-marker-wrap {
@@ -845,7 +899,13 @@ h2 {
   font-weight: 900;
 }
 .stand-car {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  min-width: 28px;
+}
+.stand-car .car-token {
+  transform: scale(0.78);
+  transform-origin: left center;
 }
 .stand-name {
   font-weight: 800;
