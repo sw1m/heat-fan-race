@@ -311,11 +311,24 @@ function finishPlayerTurn(state: GameState, random: RandomSource): void {
   justFinished.forEach((candidate, index) => {
     candidate.finishRank = alreadyRanked + index + 1;
     candidate.position = {
-      space: state.track.finishSpace + candidate.finishRank,
+      // Keep the actual landing distance visible after the car crosses the line.
+      // Finished cars no longer participate in blocking, so these post-finish
+      // positions are safe to retain as the end-of-turn result.
+      space: candidate.finishProgress ?? candidate.position.space,
       lane: candidate.position.lane,
     };
   });
-  if (state.winnerId === null && justFinished.length > 0) state.winnerId = justFinished[0].id;
+  if (state.winnerId === null && justFinished.length > 0) {
+    state.winnerId = justFinished[0].id;
+    state.phase = 'FINISHED';
+    state.activePlayerId = null;
+    log(
+      state,
+      `${justFinished[0].name} wins. The turn is complete; remaining cars are shown where they landed.`,
+      justFinished[0].id,
+    );
+    return;
+  }
   if (state.players.every((candidate) => candidate.finished)) {
     state.winnerId ??= [...state.players].sort(finishSort)[0]?.id ?? null;
     state.phase = 'FINISHED';

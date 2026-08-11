@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState, type CSSProperties, type JSX } from 'react';
-import { MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS, type PlayerColor } from '../engine/constants';
+import {
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+  PLAYER_COLORS,
+  TOTAL_HEAT_CARDS,
+  type PlayerColor,
+} from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState, isOptionalDiscardCard } from '../engine/engine';
 import { distanceToNextCorner, nextCorner } from '../engine/track';
@@ -72,6 +78,60 @@ function carMarkerFilter(color: string): string {
   return (
     CAR_MARKER_FILTERS[color.toLowerCase()] ?? 'hue-rotate(0deg) saturate(1.25) contrast(1.08)'
   );
+}
+
+function heatAvailableLabel(engineHeat: number | undefined): string {
+  const count = Math.max(0, Math.min(TOTAL_HEAT_CARDS, Math.round(engineHeat ?? 0)));
+  return `${count}/${TOTAL_HEAT_CARDS}`;
+}
+
+type RacePositionPlayer = Pick<
+  GameState['players'][number],
+  'position' | 'finished' | 'finishProgress' | 'finishRank' | 'seat'
+>;
+
+function finishDistance(game: GameState, player: RacePositionPlayer): number {
+  return Math.max(0, (player.finishProgress ?? player.position.space) - game.track.finishSpace);
+}
+
+function racePositionLabel(game: GameState, player: RacePositionPlayer): string {
+  return player.finished ? `FINISH +${finishDistance(game, player)}` : `S${player.position.space}`;
+}
+
+function compareRacePositions(left: RacePositionPlayer, right: RacePositionPlayer): number {
+  return (
+    (left.finishRank ?? 99) - (right.finishRank ?? 99) ||
+    (right.finishProgress ?? right.position.space) - (left.finishProgress ?? left.position.space) ||
+    left.position.lane - right.position.lane ||
+    left.seat - right.seat
+  );
+}
+
+type RaceLogGroup = {
+  key: string;
+  round: number;
+  label: string;
+  entries: GameState['log'];
+};
+
+function summarizeRaceLog(game: GameState): RaceLogGroup[] {
+  const names = new Map(game.players.map((player) => [player.id, player.name]));
+  const groups = new Map<string, RaceLogGroup>();
+  for (const entry of game.log) {
+    const key = `${entry.round}:${entry.playerId ?? 'race-control'}`;
+    const group = groups.get(key);
+    if (group) {
+      group.entries.push(entry);
+      continue;
+    }
+    groups.set(key, {
+      key,
+      round: entry.round,
+      label: entry.playerId ? (names.get(entry.playerId) ?? 'Racer') : 'Race control',
+      entries: [entry],
+    });
+  }
+  return [...groups.values()];
 }
 
 function cardDisplayValue(card: Card): string {
@@ -730,32 +790,27 @@ function RaceView({
             <span>STANDINGS</span>
             <span className="muted">INSIDE LANE BREAKS TIES</span>
           </div>
-          {[...publicState.players]
-            .sort(
-              (a, b) =>
-                (a.finishRank ?? 99) - (b.finishRank ?? 99) ||
-                b.position.space - a.position.space ||
-                a.position.lane - b.position.lane,
-            )
-            .map((player, index) => (
-              <div
-                className={`stand-row ${player.id === local.id ? 'local-row' : ''}`}
-                key={player.id}
-              >
-                <span className="stand-rank">{player.finishRank ?? index + 1}</span>
-                <span className="stand-car">
-                  <CarToken color={player.color} />
-                </span>
-                <span className="stand-name">
-                  {player.controller === 'BOT' ? '🤖 ' : ''}
-                  {player.name}
-                  {player.id === local.id ? ' (you)' : ''}
-                </span>
-                <span className="stand-position">
-                  {player.finished ? 'FINISHED' : `S${player.position.space}`}
-                </span>
-              </div>
-            ))}
+          {[...publicState.players].sort(compareRacePositions).map((player, index) => (
+            <div
+              className={`stand-row ${player.id === local.id ? 'local-row' : ''}`}
+              key={player.id}
+            >
+              <span className="stand-rank">{player.finishRank ?? index + 1}</span>
+              <span className="stand-car">
+                <CarToken color={player.color} />
+              </span>
+              <span className="stand-name">
+                {player.controller === 'BOT' ? '🤖 ' : ''}
+                {player.name}
+                {player.id === local.id ? ' (you)' : ''}
+              </span>
+              <span className="stand-stats">
+                <span>⚙️ G{player.gear}</span>
+                <span>🔥 {heatAvailableLabel(player.engineHeat)}</span>
+              </span>
+              <span className="stand-position">{racePositionLabel(game, player)}</span>
+            </div>
+          ))}
         </aside>
         <section className="panel driver-panel">
           <div className="panel-title">
@@ -764,7 +819,10 @@ function RaceView({
           </div>
           <div className="metrics">
             <Metric label="GEAR" value={`⚙️ ${local.gear}`} />
-            <Metric label="ENGINE" value={`🔥 ${local.engine.length}/6`} />
+            <Metric
+              label="HEAT AVAILABLE"
+              value={`🔥 ${heatAvailableLabel(local.engine.length)}`}
+            />
             <Metric
               label="DRAW / DISCARD"
               value={`${local.deck.length} / ${local.discard.length}`}
@@ -988,11 +1046,28 @@ function RaceView({
           <span className="muted">AUTHORITATIVE EVENTS</span>
         </div>
         <div className="log-list">
-          {game.log.map((entry) => (
-            <div className="log-entry" key={entry.id}>
-              <span>R{entry.round}</span>
-              <p>{entry.text}</p>
-            </div>
+          {summarizeRaceLog(game).map((group) => (
+            <details className="log-group" key={group.key}>
+              <summary>
+                <span>R{group.round}</span>
+                <strong>{group.label}</strong>
+                <span className="log-summary-text">
+                  {group.entries[0]?.text}
+                  {group.entries.length > 1 ? ` (+${group.entries.length - 1} more)` : ''}
+                </span>
+                <small>
+                  {group.entries.length} event{group.entries.length === 1 ? '' : 's'}
+                </small>
+              </summary>
+              <div className="log-group-details">
+                {group.entries.map((entry) => (
+                  <div className="log-entry" key={entry.id}>
+                    <span>R{entry.round}</span>
+                    <p>{entry.text}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
           ))}
         </div>
       </section>
@@ -1007,18 +1082,17 @@ function RaceView({
                 : `${game.players.find((player) => player.id === game.winnerId)?.name ?? 'The leader'} wins`}
             </h2>
             <p>
-              Final standings are locked. The host can return the table to the lobby for another
-              race.
+              The winner and each car&apos;s end-of-turn landing are locked. Review the table, then
+              the host can start a new race.
             </p>
             <div className="final-list">
-              {[...game.players]
-                .sort((a, b) => (a.finishRank ?? 99) - (b.finishRank ?? 99))
-                .map((player) => (
-                  <div key={player.id}>
-                    <strong>{player.finishRank}.</strong> <CarToken color={player.color} />{' '}
-                    {player.name}
-                  </div>
-                ))}
+              {[...game.players].sort(compareRacePositions).map((player, index) => (
+                <div key={player.id}>
+                  <strong>{player.finishRank ?? index + 1}.</strong>{' '}
+                  <CarToken color={player.color} /> <span>{player.name}</span>{' '}
+                  <small>{racePositionLabel(game, player)}</small>
+                </div>
+              ))}
             </div>
             <div className="button-row finish-actions">
               <button className="primary-button" onClick={() => setReviewedFinish(true)}>
@@ -1026,7 +1100,7 @@ function RaceView({
               </button>
               {isHost && (
                 <button className="secondary-button" onClick={() => void onRestart()}>
-                  RESTART RACE
+                  NEW RACE
                 </button>
               )}
               <button className="secondary-button" onClick={() => void onLeave()}>
@@ -1035,6 +1109,29 @@ function RaceView({
             </div>
           </div>
         </div>
+      )}
+      {game.phase === 'FINISHED' && reviewedFinish && (
+        <section className="panel finish-review-bar">
+          <div>
+            <div className="eyebrow">RACE REVIEW</div>
+            <strong>
+              {game.players.find((player) => player.id === game.winnerId)?.name ?? 'The leader'}{' '}
+              won. The remaining cars are frozen at their end-of-turn spaces.
+            </strong>
+          </div>
+          <div className="button-row">
+            {isHost ? (
+              <button className="primary-button" onClick={() => void onRestart()}>
+                NEW RACE
+              </button>
+            ) : (
+              <span className="helper-text">WAITING FOR THE HOST TO START A NEW RACE</span>
+            )}
+            <button className="secondary-button" onClick={() => void onLeave()}>
+              LEAVE ROOM
+            </button>
+          </div>
+        </section>
       )}
     </section>
   );
@@ -1215,13 +1312,15 @@ function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
 
 function TrackBoard({ game }: { game: GameState }): JSX.Element {
   const positions = new Map(
-    game.players
-      .filter((player) => !player.finished)
-      .map((player) => [`${player.position.space}-${player.position.lane}`, player]),
+    game.players.map((player) => [`${player.position.space}-${player.position.lane}`, player]),
   );
   const startingSpace = Math.min(0, ...game.track.grid.map((position) => position.space));
+  const furthestVisibleSpace = Math.max(
+    game.track.finishSpace + game.players.length,
+    ...game.players.map((player) => player.position.space),
+  );
   const trackSpaces = Array.from(
-    { length: game.track.finishSpace - startingSpace + 1 },
+    { length: furthestVisibleSpace - startingSpace + 1 },
     (_, index) => startingSpace + index,
   );
   return (
@@ -1253,7 +1352,10 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
         </div>
       </div>
       <div className="track-scroll">
-        <div className="track-grid">
+        <div
+          className="track-grid"
+          style={{ '--track-space-count': trackSpaces.length } as CSSProperties}
+        >
           {[0, 1].map((lane) => (
             <div className="track-lane" key={lane}>
               <div className="lane-label">{lane === 0 ? 'RACE LINE' : 'OUTSIDE'}</div>
@@ -1264,7 +1366,7 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                 );
                 return (
                   <div
-                    className={`track-space ${space < 0 ? 'starting-space' : ''} ${corner ? 'corner-space' : ''} ${space === game.track.finishSpace ? 'finish-space' : ''}`}
+                    className={`track-space ${space < 0 ? 'starting-space' : ''} ${corner ? 'corner-space' : ''} ${space === game.track.finishSpace ? 'finish-space' : ''} ${space > game.track.finishSpace ? 'post-finish-space' : ''}`}
                     key={space}
                   >
                     {corner && <span className="corner-marker">{corner.speedLimit}</span>}
@@ -1272,7 +1374,7 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                       <span className="car-marker-wrap" title={player.name}>
                         <span className="car-distance">
                           {player.finished
-                            ? 'FINISHED'
+                            ? `FINISH +${finishDistance(game, player)}`
                             : distanceToNextCorner(game.track, player.position.space) !== null
                               ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
                               : `TO FINISH ${game.track.finishSpace - player.position.space}`}
@@ -1280,7 +1382,13 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                         <CarToken color={player.color} className="car-marker" />
                       </span>
                     )}
-                    {space < 0 ? <small>GRID</small> : space % 5 === 0 && <small>{space}</small>}
+                    {space < 0 ? (
+                      <small>GRID</small>
+                    ) : space > game.track.finishSpace ? (
+                      <small>{space}</small>
+                    ) : (
+                      space % 5 === 0 && <small>{space}</small>
+                    )}
                   </div>
                 );
               })}

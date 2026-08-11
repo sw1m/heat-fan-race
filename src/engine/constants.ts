@@ -26,5 +26,6 @@ export const USA_BEGINNER_TRACK: TrackConfig = {
 export const BASIC_VALUES = [1, 2, 3, 4] as const;
 export const STARTING_HAND_SIZE = 7;
 export const USA_ENGINE_HEAT = 6;
+export const TOTAL_HEAT_CARDS = 7;
 export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS = 2;
