@@ -3,6 +3,11 @@ import { test, expect } from '@playwright/test';
 test('a solo player can add a bot and start a local test race', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Nickname').fill('Preview Driver');
+  await page.getByRole('button', { name: 'Blue car' }).click();
+  await expect(page.getByRole('button', { name: 'Blue car' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await page.getByRole('button', { name: 'CREATE RACE' }).click();
   await expect(page.getByText('Choose your seat.')).toBeVisible();
   await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
@@ -12,10 +17,19 @@ test('a solo player can add a bot and start a local test race', async ({ page })
   await page.getByRole('button', { name: 'START RACE' }).click();
   await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
+  await expect(page.locator('.stand-car')).toHaveCount(2);
+  const carStyles = await page
+    .locator('.stand-car')
+    .evaluateAll((elements) => elements.map((element) => element.getAttribute('style')));
+  expect(new Set(carStyles).size).toBe(2);
+  await page.getByRole('button', { name: /SHIFT/ }).click();
+  await expect(page.getByText('1. Shift and choose cards')).toBeVisible();
   await expect(page.getByText(/Bot 2 locked in/)).toHaveCount(0);
   await page.locator('.hand-panel .card').first().click();
   await page.getByRole('button', { name: 'LOCK IN PLAN' }).click();
   await expect(page.getByText(/Bot 2 locked in/)).toBeVisible();
+  await page.getByRole('button', { name: /DISCARD .* END TURN/ }).click();
+  await expect(page.getByText(/Round 2:/)).toBeVisible();
   const leaveButton = page.getByRole('button', { name: 'LEAVE ROOM' }).first();
   const leaveButtonBox = await leaveButton.boundingBox();
   expect(leaveButtonBox).not.toBeNull();

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type JSX } from 'react';
-import { MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS } from '../engine/constants';
+import { useCallback, useEffect, useState, type CSSProperties, type JSX } from 'react';
+import { MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS, type PlayerColor } from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState } from '../engine/engine';
 import { distanceToNextCorner, nextCorner } from '../engine/track';
@@ -49,10 +49,31 @@ function roomPlayers(room: ActiveRoom): RoomPlayer[] {
   return room.players;
 }
 
+const CAR_COLOR_NAMES: Record<PlayerColor, string> = {
+  '#d44735': 'Red',
+  '#ee9a2f': 'Orange',
+  '#245c8c': 'Blue',
+  '#2f7a54': 'Green',
+};
+
+function carColorName(color: string): string {
+  return CAR_COLOR_NAMES[color as PlayerColor] ?? 'Custom';
+}
+
 function cardDisplayValue(card: Card): string {
   if (card.kind === 'STRESS') return 'STRESS';
   if (card.kind === 'HEAT' || card.kind === 'STARTING_HEAT') return 'HEAT';
   return String(card.value ?? 0);
+}
+
+function isNumericCard(card: Card): boolean {
+  return card.kind === 'BASIC' || card.kind === 'STARTING_ZERO' || card.kind === 'STARTING_FIVE';
+}
+
+function cardTopSymbol(card: Card): string {
+  if (isNumericCard(card)) return '◆';
+  if (card.kind === 'STRESS') return '⚠️';
+  return '🔥';
 }
 
 function localPublicPlayers(game: GameState): RoomPlayer[] {
@@ -124,12 +145,12 @@ export function App(): JSX.Element {
   }, [room]);
 
   const createRoom = useCallback(
-    async (nickname: string) => {
+    async (nickname: string, color: PlayerColor) => {
       setError('');
       try {
         const next = isSupabaseConfigured
-          ? await createRemoteRoom(nickname)
-          : createLocalRoom(nickname, identity);
+          ? await createRemoteRoom(nickname, color)
+          : createLocalRoom(nickname, identity, color);
         setRoom(next);
         setScreen('ROOM');
       } catch (cause) {
@@ -140,11 +161,11 @@ export function App(): JSX.Element {
   );
 
   const joinRoom = useCallback(
-    async (nickname: string, code: string) => {
+    async (nickname: string, code: string, color: PlayerColor) => {
       setError('');
       try {
         if (isSupabaseConfigured) {
-          const next = await joinRemoteRoom(code, nickname);
+          const next = await joinRemoteRoom(code, nickname, color);
           setRoom(next);
           setScreen('ROOM');
           return;
@@ -156,6 +177,10 @@ export function App(): JSX.Element {
           );
         if (saved.status !== 'LOBBY') throw new Error('That room is already racing.');
         if (saved.players.length >= MAX_PLAYERS) throw new Error('That room is full.');
+        if (saved.players.some((player) => player.color === color))
+          throw new Error(
+            `${carColorName(color)} is already taken in that room. Choose another car color.`,
+          );
         const seat = saved.players.length;
         const next: LocalRoom = {
           ...saved,
@@ -165,7 +190,7 @@ export function App(): JSX.Element {
               id: identity,
               nickname,
               seat,
-              color: PLAYER_COLORS[seat],
+              color,
               isHost: false,
               connected: true,
               submitted: false,
@@ -176,7 +201,10 @@ export function App(): JSX.Element {
         setRoom(next);
         setScreen('ROOM');
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : 'Could not join the race room.';
+        const rawMessage = cause instanceof Error ? cause.message : '';
+        const message = rawMessage.includes('COLOR_TAKEN')
+          ? `${carColorName(color)} is already taken in that room. Choose another car color.`
+          : rawMessage || 'Could not join the race room.';
         setError(message);
       }
     },
@@ -270,19 +298,20 @@ function LandingScreen({
 }: {
   initialCode: string;
   error: string;
-  onCreate: (nickname: string) => Promise<void>;
-  onJoin: (nickname: string, code: string) => Promise<void>;
+  onCreate: (nickname: string, color: PlayerColor) => Promise<void>;
+  onJoin: (nickname: string, code: string, color: PlayerColor) => Promise<void>;
 }): JSX.Element {
   const [nickname, setNickname] = useState('');
   const [code, setCode] = useState(initialCode.toUpperCase());
+  const [color, setColor] = useState<PlayerColor>(PLAYER_COLORS[0]);
   const [busy, setBusy] = useState(false);
 
   async function submit(kind: 'create' | 'join'): Promise<void> {
     if (!nickname.trim()) return;
     if (kind === 'join' && code.trim().length < 4) return;
     setBusy(true);
-    if (kind === 'create') await onCreate(nickname.trim());
-    else await onJoin(nickname.trim(), code.trim().toUpperCase());
+    if (kind === 'create') await onCreate(nickname.trim(), color);
+    else await onJoin(nickname.trim(), code.trim().toUpperCase(), color);
     setBusy(false);
   }
 
@@ -318,6 +347,7 @@ function LandingScreen({
           placeholder="e.g. Apex Annie"
           autoComplete="off"
         />
+        <ColorPicker value={color} onChange={setColor} />
         <div className="button-row">
           <button
             className="primary-button"
@@ -369,6 +399,46 @@ function LandingScreen({
         fonts, or generated images are used.
       </footer>
     </main>
+  );
+}
+
+function ColorPicker({
+  value,
+  onChange,
+  taken = [],
+}: {
+  value: PlayerColor;
+  onChange: (color: PlayerColor) => void;
+  taken?: readonly string[];
+}): JSX.Element {
+  return (
+    <div className="color-picker" role="group" aria-label="Car color">
+      <div className="color-picker-heading">
+        <span className="field-label">Car color</span>
+        <span className="helper-text">{carColorName(value)} car</span>
+      </div>
+      <div className="color-options">
+        {PLAYER_COLORS.map((color) => {
+          const unavailable = taken.includes(color);
+          return (
+            <button
+              type="button"
+              key={color}
+              className={`color-option ${value === color ? 'color-selected' : ''}`}
+              style={{ '--car-color': color } as CSSProperties}
+              aria-label={`${carColorName(color)} car`}
+              aria-pressed={value === color}
+              disabled={unavailable}
+              onClick={() => onChange(color)}
+            >
+              <span className="color-car">◆</span>
+              <span>{carColorName(color)}</span>
+              {unavailable && <small>TAKEN</small>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -726,7 +796,7 @@ function RaceView({
           {displayHand.map((card) => (
             <button
               type="button"
-              className={`card card-${card.kind.toLowerCase()} ${selected.includes(card.id) ? 'card-selected' : ''}`}
+              className={`card card-${card.kind.toLowerCase()} ${isNumericCard(card) ? 'card-number' : ''} ${selected.includes(card.id) ? 'card-selected' : ''}`}
               disabled={!selectable}
               draggable={handSort === 'MANUAL' && selectable}
               key={card.id}
@@ -742,19 +812,9 @@ function RaceView({
               onDragEnd={() => setDraggingCardId(null)}
               title={`${cardDisplayValue(card)} card${handSort === 'MANUAL' ? ' — drag to reorder' : ''}`}
             >
-              <span className="card-symbol">
-                {card.kind === 'STRESS'
-                  ? '⚠️'
-                  : card.kind === 'HEAT' || card.kind === 'STARTING_HEAT'
-                    ? '🔥'
-                    : card.kind === 'STARTING_FIVE'
-                      ? '5'
-                      : card.kind === 'STARTING_ZERO'
-                        ? '0'
-                        : '◆'}
-              </span>
+              <span className="card-symbol">{cardTopSymbol(card)}</span>
               <strong>
-                {card.kind === 'BASIC'
+                {isNumericCard(card)
                   ? card.value
                   : card.kind === 'STRESS'
                     ? 'STRESS'
@@ -769,6 +829,27 @@ function RaceView({
               </small>
             </button>
           ))}
+        </div>
+        <div className="played-card-tray" aria-label="Played cards awaiting discard">
+          <div>
+            <strong>PLAYED THIS TURN</strong>
+            <span>
+              {local.played.length > 0
+                ? 'Pass the reaction to discard these and draw back to seven.'
+                : 'No cards are waiting to be discarded.'}
+            </span>
+          </div>
+          <div className="played-card-list">
+            {local.played.length > 0 ? (
+              local.played.map((card) => (
+                <span className="played-card-chip" key={card.id}>
+                  <b>{cardTopSymbol(card)}</b> {cardDisplayValue(card)}
+                </span>
+              ))
+            ) : (
+              <span className="played-card-empty">—</span>
+            )}
+          </div>
         </div>
         <button
           className="primary-button lock-button"
@@ -826,7 +907,9 @@ function RaceView({
               className="action-button action-neutral"
               onClick={() => action('PASS_REACTION')}
             >
-              PASS / FINISH TURN
+              {pending?.kind === 'ADRENALINE'
+                ? 'SKIP ADRENALINE'
+                : `DISCARD ${local.played.length} + END TURN`}
             </button>
           </div>
         )}
@@ -896,11 +979,43 @@ function Metric({ label, value }: { label: string; value: string }): JSX.Element
 }
 
 const TURN_STEPS = [
-  { label: 'SHIFT + CARDS', short: 'SHIFT' },
-  { label: 'SPEED + MOVE', short: 'MOVE' },
-  { label: 'REACTIONS', short: 'REACT' },
-  { label: 'CLEANUP', short: 'CLEAN' },
-];
+  {
+    label: 'SHIFT + CARDS',
+    short: 'SHIFT',
+    title: '1. Shift and choose cards',
+    details: [
+      'Choose a gear from 1 through 4. A normal shift moves one position; a two-position shift costs 1 Heat.',
+      'Select exactly as many cards as the chosen gear. All racers lock their choices before movement begins.',
+    ],
+  },
+  {
+    label: 'SPEED + MOVE',
+    short: 'MOVE',
+    title: '2. Reveal speed and move',
+    details: [
+      'Reveal the selected cards and add their Speed. Stress reveals cards until a Basic Speed card is found.',
+      'Move in race order, placing the car in a legal landing space while respecting blocking, lanes, and the finish line.',
+    ],
+  },
+  {
+    label: 'REACTIONS',
+    short: 'REACT',
+    title: '3. Resolve reactions',
+    details: [
+      'The active racer may use available Adrenaline, Boost, Cooldown, or Slipstream actions, then passes to finish the turn.',
+      'Corner speed is checked after all movement for that racer. Heat can be paid; otherwise the car spins out.',
+    ],
+  },
+  {
+    label: 'CLEANUP',
+    short: 'CLEAN',
+    title: '4. Discard and start the next round',
+    details: [
+      'Played cards go to the discard pile automatically when the racer finishes the reaction step.',
+      'Draw back to seven cards, rank any finishers, then begin the next simultaneous planning step.',
+    ],
+  },
+] as const;
 
 function currentTurnStep(phase: GameState['phase']): number {
   if (phase === 'PLANNING') return 0;
@@ -928,6 +1043,7 @@ function orderedTurnPlayers(game: GameState): GameState['players'] {
 
 function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
   const step = currentTurnStep(game.phase);
+  const [expandedStep, setExpandedStep] = useState<number | null>(null);
   const raceFinished = game.phase === 'FINISHED';
   const order = orderedTurnPlayers(game);
   const leaderSpace = Math.max(...game.players.map((player) => player.position.space), 0);
@@ -951,14 +1067,35 @@ function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
                 ? 'active'
                 : 'upcoming';
           return (
-            <div className={`turn-step ${status}`} key={turn.short}>
+            <button
+              type="button"
+              className={`turn-step ${status} ${expandedStep === index ? 'expanded' : ''}`}
+              key={turn.short}
+              aria-expanded={expandedStep === index}
+              onClick={() => setExpandedStep((current) => (current === index ? null : index))}
+            >
               <span className="turn-step-number">{index + 1}</span>
               <strong>{turn.short}</strong>
               <small>{turn.label}</small>
-            </div>
+            </button>
           );
         })}
       </div>
+      {expandedStep !== null && (
+        <div className="turn-step-breakdown">
+          <div className="turn-step-breakdown-heading">
+            <strong>{TURN_STEPS[expandedStep].title}</strong>
+            <button type="button" onClick={() => setExpandedStep(null)}>
+              CLOSE
+            </button>
+          </div>
+          <ul>
+            {TURN_STEPS[expandedStep].details.map((detail) => (
+              <li key={detail}>{detail}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="turn-order-row">
         <span className="turn-order-label">RACE ORDER</span>
         <div className="resolution-order">
