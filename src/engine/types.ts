@@ -53,6 +53,7 @@ export interface PlayerState {
   played: Card[];
   finished: boolean;
   finishRank: number | null;
+  controller?: 'HUMAN' | 'BOT';
   disconnected?: boolean;
 }
 
