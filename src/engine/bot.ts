@@ -7,6 +7,12 @@ function isBot(player: PlayerState): boolean {
   return player.controller === 'BOT';
 }
 
+function humansHaveSubmitted(state: GameState): boolean {
+  return state.players
+    .filter((player) => !isBot(player) && !player.finished)
+    .every((player) => Boolean(state.submitted[player.id]));
+}
+
 function estimatedSpeed(card: Card): number {
   if (card.kind === 'BASIC' || card.kind === 'STARTING_ZERO' || card.kind === 'STARTING_FIVE') {
     return card.value ?? 0;
@@ -114,6 +120,7 @@ export function advanceBotTurns(input: GameState, random: RandomSource = Math.ra
   for (let index = 0; index < BOT_ACTION_LIMIT; index += 1) {
     if (state.phase === 'FINISHED') return state;
     if (state.phase === 'PLANNING') {
+      if (!humansHaveSubmitted(state)) return state;
       const bot = state.players.find(
         (player) => isBot(player) && !player.finished && !state.submitted[player.id],
       );
