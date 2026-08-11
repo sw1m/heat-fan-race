@@ -62,7 +62,7 @@ export function isAdjacentOrBehind(players: readonly PlayerState[], player: Play
       other.id !== player.id &&
       !other.finished &&
       (other.position.space === player.position.space ||
-        other.position.space > player.position.space),
+        other.position.space === player.position.space + 1),
   );
 }
 

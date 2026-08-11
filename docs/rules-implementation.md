@@ -26,7 +26,9 @@ Gear 1 provides up to three Cooldown and gear 2 up to one Cooldown. Cooldown mov
 
 Crossed corner lines are evaluated in track order. Corner speed is the sum of normal played speed plus Adrenaline speed and Boost/Stress speed; Slipstream movement does not increase this speed. Each point over a corner limit costs one Heat. If the engine cannot pay, the car spins out at the first available space before that corner, empties remaining engine Heat to discard, resets to gear 1, and receives one Stress in gears 1–2 or two Stress in gears 3–4.
 
-Slipstream is optional, can be used once per turn when the car is beside or behind another car, moves two spaces, and cannot cross or be used after the finish line. The UI makes the choice explicit and offers Pass.
+Slipstream is optional, can be used once per turn when the car ends in the same space as another car or immediately behind one, moves two spaces, and cannot cross or be used after the finish line. A car farther ahead does not qualify. The UI makes the choice explicit and offers Pass.
+
+The optional Discard step allows a racer to discard numeric cards from hand before replenishing. Heat and Stress cards cannot be chosen for this optional discard; played cards are discarded automatically as part of ending the turn.
 
 ## Finish and ranking
 

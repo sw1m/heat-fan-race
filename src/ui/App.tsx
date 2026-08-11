@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type JSX } from 'react';
 import { MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS, type PlayerColor } from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
-import { applyGameAction, getPublicState } from '../engine/engine';
+import { applyGameAction, getPublicState, isOptionalDiscardCard } from '../engine/engine';
 import { distanceToNextCorner, nextCorner } from '../engine/track';
 import type { Card, GameAction, GameState } from '../engine/types';
 import {
@@ -621,6 +621,7 @@ function RaceView({
   const pending = game.pending;
   const [gear, setGear] = useState(local.gear);
   const [selected, setSelected] = useState<string[]>([]);
+  const [discardSelection, setDiscardSelection] = useState<string[]>([]);
   const [handSort, setHandSort] = useState<HandSortMode>('MANUAL');
   const [manualOrder, setManualOrder] = useState<string[]>([]);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
@@ -628,14 +629,19 @@ function RaceView({
   useEffect(() => {
     setGear(local.gear);
     setSelected([]);
+    setDiscardSelection([]);
   }, [game.round, local.gear, pending?.playerId]);
   useEffect(() => {
     setManualOrder((current) => reconcileCardOrder(current, local.hand));
+    setDiscardSelection((current) =>
+      current.filter((cardId) => local.hand.some((card) => card.id === cardId)),
+    );
   }, [handIdsKey, local.hand]);
   const active = game.activePlayerId === local.id;
   const publicState = getPublicState(game, local.id);
   const currentPublic = publicState.players.find((player) => player.id === local.id);
   const selectable = game.phase === 'PLANNING' && !game.submitted?.[local.id];
+  const discardMode = active && pending?.kind === 'GEAR_REACTION';
   const inviteText = pending?.playerId === local.id ? pending.options : [];
   const handById = new Map(local.hand.map((card) => [card.id, card]));
   const displayHand =
@@ -652,6 +658,12 @@ function RaceView({
           ? [...old, cardId]
           : old,
     );
+  const selectDiscardCard = (card: Card) => {
+    if (!discardMode || !isOptionalDiscardCard(card)) return;
+    setDiscardSelection((old) =>
+      old.includes(card.id) ? old.filter((id) => id !== card.id) : [...old, card.id],
+    );
+  };
   const dropCard = (targetId: string) => {
     if (!draggingCardId) return;
     setManualOrder((current) =>
@@ -765,7 +777,11 @@ function RaceView({
             </small>
           </span>
           <span className="muted">
-            {selected.length}/{gear} SELECTED
+            {selectable
+              ? `${selected.length}/${gear} SELECTED`
+              : discardMode
+                ? `${discardSelection.length} TO DISCARD`
+                : 'CARDS LOCKED'}
           </span>
         </div>
         <div className="hand-toolbar">
@@ -787,20 +803,25 @@ function RaceView({
             </button>
           </div>
           <span className="helper-text">
-            {handSort === 'MANUAL'
-              ? 'Drag cards to arrange them.'
-              : '0 → 5, then Heat, then Stress.'}
+            {discardMode
+              ? 'Optional discard: click numeric cards, then confirm below. Heat and Stress stay in hand.'
+              : handSort === 'MANUAL'
+                ? 'Drag cards to arrange them.'
+                : '0 → 5, then Heat, then Stress.'}
           </span>
         </div>
         <div className="hand-row">
           {displayHand.map((card) => (
             <button
               type="button"
-              className={`card card-${card.kind.toLowerCase()} ${isNumericCard(card) ? 'card-number' : ''} ${selected.includes(card.id) ? 'card-selected' : ''}`}
-              disabled={!selectable}
+              className={`card card-${card.kind.toLowerCase()} ${isNumericCard(card) ? 'card-number' : ''} ${selected.includes(card.id) ? 'card-selected' : ''} ${discardSelection.includes(card.id) ? 'card-discard-selected' : ''}`}
+              disabled={!selectable && !(discardMode && isOptionalDiscardCard(card))}
               draggable={handSort === 'MANUAL' && selectable}
               key={card.id}
-              onClick={() => selectCard(card.id)}
+              onClick={() => {
+                if (selectable) selectCard(card.id);
+                else selectDiscardCard(card);
+              }}
               onDragStart={() => setDraggingCardId(card.id)}
               onDragOver={(event) => {
                 if (handSort === 'MANUAL') event.preventDefault();
@@ -834,9 +855,11 @@ function RaceView({
           <div>
             <strong>PLAYED THIS TURN</strong>
             <span>
-              {local.played.length > 0
-                ? 'Pass the reaction to discard these and draw back to seven.'
-                : 'No cards are waiting to be discarded.'}
+              {discardMode
+                ? 'Played cards discard automatically; you may also discard numeric cards from hand.'
+                : local.played.length > 0
+                  ? 'Played cards discard automatically when you end the turn.'
+                  : 'No cards are waiting to be discarded.'}
             </span>
           </div>
           <div className="played-card-list">
@@ -903,13 +926,25 @@ function RaceView({
                 💨 SLIPSTREAM 2
               </button>
             )}
+            {pending?.kind === 'GEAR_REACTION' && discardSelection.length > 0 && (
+              <button
+                className="action-button action-red"
+                onClick={() =>
+                  void onAction({
+                    type: 'DISCARD_CARDS',
+                    playerId: local.id,
+                    cardIds: discardSelection,
+                  })
+                }
+              >
+                DISCARD {discardSelection.length} + END TURN
+              </button>
+            )}
             <button
               className="action-button action-neutral"
               onClick={() => action('PASS_REACTION')}
             >
-              {pending?.kind === 'ADRENALINE'
-                ? 'SKIP ADRENALINE'
-                : `DISCARD ${local.played.length} + END TURN`}
+              {pending?.kind === 'ADRENALINE' ? 'SKIP ADRENALINE' : 'KEEP HAND + END TURN'}
             </button>
           </div>
         )}

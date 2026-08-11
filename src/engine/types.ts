@@ -108,6 +108,7 @@ export type RandomSource = () => number;
 
 export type GameAction =
   | { type: 'SUBMIT_PLAN'; playerId: string; gear: number; cardIds: string[] }
+  | { type: 'DISCARD_CARDS'; playerId: string; cardIds: string[] }
   | { type: 'ADRENALINE_SPEED'; playerId: string }
   | { type: 'ADRENALINE_COOLDOWN'; playerId: string }
   | { type: 'BOOST'; playerId: string }

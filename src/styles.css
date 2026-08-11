@@ -755,7 +755,7 @@ h2 {
   background: #3d3329;
 }
 .corner-space {
-  border-top: 4px solid var(--yellow);
+  border-left: 4px solid var(--yellow);
 }
 .finish-space {
   border-right: 4px solid #f7ead1;
@@ -763,8 +763,11 @@ h2 {
 }
 .corner-marker {
   position: absolute;
-  top: -17px;
-  left: 2px;
+  top: -21px;
+  left: -2px;
+  transform: translateX(-50%);
+  padding: 1px 3px;
+  background: #2b241e;
   color: var(--yellow);
   font-size: 13px;
   font-weight: 950;
@@ -1010,6 +1013,10 @@ h2 {
 }
 .card-selected {
   outline: 3px solid var(--red);
+}
+.card-discard-selected {
+  outline: 3px solid var(--orange);
+  box-shadow: 0 8px 14px rgba(184, 94, 28, 0.22);
 }
 .card-basic {
   border-top: 5px solid #e2c271;
