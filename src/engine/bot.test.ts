@@ -35,26 +35,37 @@ describe('rules-following bot', () => {
     expect(() => applyGameAction(state, action, fixedRandom)).not.toThrow();
   });
 
-  it('submits during planning and waits for the human player', () => {
+  it('waits for all human plans before locking the bot plan', () => {
     const state = createInitialGame([human, bot], fixedRandom);
-    const next = advanceBotTurns(state, fixedRandom);
-    expect(next.phase).toBe('PLANNING');
+    const waiting = advanceBotTurns(state, fixedRandom);
+    expect(waiting).toBe(state);
+    expect(waiting.submitted[bot.id]).toBeUndefined();
+
+    const afterHuman = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: human.id, gear: 1, cardIds: [humanCard(state)] },
+      fixedRandom,
+    );
+    const next = advanceBotTurns(afterHuman, fixedRandom);
+    expect(next.phase).toBe('PLAYER_REACTION');
     expect(next.submitted[bot.id]).toBeDefined();
-    expect(next.submitted[human.id]).toBeUndefined();
+    expect(next.submitted[human.id]).toBeDefined();
+    expect(next.activePlayerId).toBe(human.id);
   });
 
   it('resolves its reactions and returns control without deadlocking', () => {
-    let state = advanceBotTurns(createInitialGame([human, bot], fixedRandom), fixedRandom);
+    let state = createInitialGame([human, bot], fixedRandom);
     state = applyGameAction(
       state,
       { type: 'SUBMIT_PLAN', playerId: human.id, gear: 1, cardIds: [humanCard(state)] },
       fixedRandom,
     );
+    state = advanceBotTurns(state, fixedRandom);
     state = applyGameAction(state, { type: 'PASS_REACTION', playerId: human.id }, fixedRandom);
     state = advanceBotTurns(state, fixedRandom);
     expect(state.phase).toBe('PLANNING');
     expect(state.round).toBe(2);
-    expect(state.submitted[bot.id]).toBeDefined();
+    expect(state.submitted[bot.id]).toBeUndefined();
     expect(state.activePlayerId).toBeNull();
   });
 
