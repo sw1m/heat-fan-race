@@ -44,6 +44,18 @@ export function crossedCorners(
   );
 }
 
+export function nextCorner(
+  track: TrackConfig,
+  fromSpace: number,
+): TrackConfig['corners'][number] | undefined {
+  return track.corners.find((corner) => corner.lineSpace > fromSpace);
+}
+
+export function distanceToNextCorner(track: TrackConfig, fromSpace: number): number | null {
+  const corner = nextCorner(track, fromSpace);
+  return corner ? corner.lineSpace - fromSpace : null;
+}
+
 export function isAdjacentOrBehind(players: readonly PlayerState[], player: PlayerState): boolean {
   return players.some(
     (other) =>
