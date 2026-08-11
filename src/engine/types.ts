@@ -78,6 +78,7 @@ export interface PendingReaction {
   boostAvailable: boolean;
   cooldownAvailable: number;
   slipstreamAvailable: boolean;
+  slipstreamUsed: boolean;
   crossedCornerIds: string[];
 }
 

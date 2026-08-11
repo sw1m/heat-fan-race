@@ -4,6 +4,7 @@ import { applyGameAction, createInitialGame, getPublicState } from './engine';
 import { USA_BEGINNER_TRACK } from './constants';
 import {
   chooseLandingPosition,
+  chooseSpinoutPosition,
   crossedCorners,
   distanceToNextCorner,
   finishSort,
@@ -212,6 +213,72 @@ describe('track rules', () => {
     ).toEqual({ space: 4, lane: 1 });
   });
 
+  it('puts a spinout in the first available space before the corner', () => {
+    const board = [car('p1', 9, 0), car('p2', 9, 1), car('p3', 8, 0)];
+    expect(
+      chooseSpinoutPosition(board, 10, USA_BEGINNER_TRACK, 'p4', { space: 12, lane: 1 }),
+    ).toEqual({ space: 8, lane: 1 });
+  });
+
+  it('keeps a four-car sequential landing legal when every car targets one space', () => {
+    let state = createInitialGame(players, fixedRandom);
+    state.players.forEach((player, index) => {
+      player.position = { space: 3, lane: (index % 2) as 0 | 1 };
+      player.hand = [{ id: `${player.id}-speed-two`, kind: 'BASIC', value: 2 }];
+    });
+
+    for (const player of state.players) {
+      state = applyGameAction(
+        state,
+        { type: 'SUBMIT_PLAN', playerId: player.id, gear: 1, cardIds: [player.hand[0].id] },
+        fixedRandom,
+      );
+    }
+
+    while (state.phase === 'PLAYER_REACTION') {
+      state = pass(state, state.activePlayerId!);
+    }
+
+    const occupancy = new Map<number, number>();
+    state.players.forEach((player) => {
+      occupancy.set(player.position.space, (occupancy.get(player.position.space) ?? 0) + 1);
+    });
+    expect(Math.max(...occupancy.values())).toBeLessThanOrEqual(2);
+    expect(state.players.map((player) => player.position.space).sort((a, b) => a - b)).toEqual([
+      4, 4, 5, 5,
+    ]);
+  });
+
+  it('keeps four simultaneous spinouts within two cars per space', () => {
+    let state = createInitialGame(players, fixedRandom);
+    state.players.forEach((player, index) => {
+      player.position = { space: 7, lane: (index % 2) as 0 | 1 };
+      player.engine = [];
+      player.hand = [{ id: `${player.id}-speed-five`, kind: 'STARTING_FIVE', value: 5 }];
+    });
+
+    for (const player of state.players) {
+      state = applyGameAction(
+        state,
+        { type: 'SUBMIT_PLAN', playerId: player.id, gear: 1, cardIds: [player.hand[0].id] },
+        fixedRandom,
+      );
+    }
+
+    while (state.phase === 'PLAYER_REACTION') {
+      state = pass(state, state.activePlayerId!);
+    }
+
+    const occupancy = new Map<number, number>();
+    state.players.forEach((player) => {
+      occupancy.set(player.position.space, (occupancy.get(player.position.space) ?? 0) + 1);
+    });
+    expect(Math.max(...occupancy.values())).toBeLessThanOrEqual(2);
+    expect(state.players.map((player) => player.position.space).sort((a, b) => a - b)).toEqual([
+      8, 8, 9, 9,
+    ]);
+  });
+
   it('allows passing through cars and only identifies immediate slipstream adjacency', () => {
     const board = [car('p1', 3, 0), car('p2', 6, 0)];
     expect(
@@ -407,6 +474,25 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     state = applyGameAction(
       state,
       { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['far-one'] },
+      fixedRandom,
+    );
+    expect(state.pending?.options).not.toContain('SLIPSTREAM');
+  });
+
+  it('does not offer Slipstream when two spaces would cross the finish line', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: USA_BEGINNER_TRACK.finishSpace - 3, lane: 0 };
+    state.players[1].position = { space: USA_BEGINNER_TRACK.finishSpace - 2, lane: 1 };
+    state.players[0].hand = [{ id: 'finish-slip', kind: 'STARTING_ZERO', value: 0 }];
+    state.players[1].hand = [{ id: 'finish-one', kind: 'BASIC', value: 1 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['finish-slip'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['finish-one'] },
       fixedRandom,
     );
     expect(state.pending?.options).not.toContain('SLIPSTREAM');

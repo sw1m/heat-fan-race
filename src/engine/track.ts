@@ -36,6 +36,23 @@ export function chooseLandingPosition(
   return { space, lane };
 }
 
+export function chooseSpinoutPosition(
+  players: readonly PlayerState[],
+  cornerLineSpace: number,
+  track: TrackConfig,
+  playerId: string,
+  fallback: CarPosition,
+): CarPosition {
+  const firstTrackSpace = Math.min(0, ...track.grid.map((position) => position.space));
+  for (let space = cornerLineSpace - 1; space >= firstTrackSpace; space -= 1) {
+    if (!isSpaceOpen(players, space, playerId)) continue;
+    const occupants = occupantsAt(players, space, playerId);
+    const lane: Lane = occupants.some((player) => player.position.lane === 0) ? 1 : 0;
+    return { space, lane };
+  }
+  return fallback;
+}
+
 export function crossedCorners(
   track: TrackConfig,
   fromSpace: number,
