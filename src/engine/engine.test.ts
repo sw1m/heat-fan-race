@@ -193,12 +193,13 @@ describe('track rules', () => {
     ).toEqual({ space: 5, lane: 0 });
   });
 
-  it('allows passing through cars and identifies slipstream adjacency', () => {
+  it('allows passing through cars and only identifies immediate slipstream adjacency', () => {
     const board = [car('p1', 3, 0), car('p2', 6, 0)];
     expect(
       chooseLandingPosition(board, { space: 1, lane: 0 }, 5, USA_BEGINNER_TRACK, 'p3').space,
     ).toBe(6);
-    expect(isAdjacentOrBehind([...board, car('p3', 5, 1)], board[0])).toBe(true);
+    expect(isAdjacentOrBehind([...board, car('p3', 5, 1)], board[0])).toBe(false);
+    expect(isAdjacentOrBehind([...board, car('p4', 4, 1)], board[0])).toBe(true);
   });
 
   it('uses the inside lane as the tie-breaker', () => {
@@ -366,6 +367,74 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.pending?.kind).toBe('ADRENALINE');
     state = applyGameAction(state, { type: 'ADRENALINE_SPEED', playerId: 'p2' }, fixedRandom);
     expect(state.players[1].position.space).toBe(3);
+  });
+
+  it('does not offer Slipstream when the nearest car is more than one space ahead', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 1, lane: 0 };
+    state.players[1].position = { space: 3, lane: 1 };
+    state.players[0].hand = [{ id: 'far-zero', kind: 'STARTING_ZERO', value: 0 }];
+    state.players[1].hand = [{ id: 'far-one', kind: 'BASIC', value: 1 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['far-zero'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['far-one'] },
+      fixedRandom,
+    );
+    expect(state.pending?.options).not.toContain('SLIPSTREAM');
+  });
+
+  it('allows optional discard of numeric hand cards but keeps Heat and Stress', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].hand = [
+      { id: 'played-one', kind: 'BASIC', value: 1 },
+      { id: 'optional-two', kind: 'BASIC', value: 2 },
+      { id: 'kept-heat', kind: 'HEAT' },
+      { id: 'kept-stress', kind: 'STRESS' },
+    ];
+    state.players[0].deck = Array.from({ length: 5 }, (_, index) => ({
+      id: `draw-${index}`,
+      kind: 'BASIC' as const,
+      value: 1,
+    }));
+    state.players[1].hand = [{ id: 'other-one', kind: 'BASIC', value: 1 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['played-one'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['other-one'] },
+      fixedRandom,
+    );
+    expect(() =>
+      applyGameAction(
+        state,
+        { type: 'DISCARD_CARDS', playerId: 'p1', cardIds: ['kept-heat'] },
+        fixedRandom,
+      ),
+    ).toThrow(/Heat and Stress/);
+    state = applyGameAction(
+      state,
+      { type: 'DISCARD_CARDS', playerId: 'p1', cardIds: ['optional-two'] },
+      fixedRandom,
+    );
+    const player = state.players[0];
+    expect(player.hand.slice(0, 2).map((card) => card.id)).toEqual(['kept-heat', 'kept-stress']);
+    expect(player.hand).toHaveLength(7);
+    expect(player.discard.map((card) => card.id)).toEqual(['optional-two', 'played-one']);
+    expect(() =>
+      applyGameAction(
+        state,
+        { type: 'DISCARD_CARDS', playerId: 'p1', cardIds: ['kept-stress'] },
+        fixedRandom,
+      ),
+    ).toThrow(/not this player/);
   });
 
   it('marks a car finished when normal movement crosses the finish line', () => {

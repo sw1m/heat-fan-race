@@ -25,10 +25,12 @@ test('a solo player can add a bot and start a local test race', async ({ page })
   await page.getByRole('button', { name: /SHIFT/ }).click();
   await expect(page.getByText('1. Shift and choose cards')).toBeVisible();
   await expect(page.getByText(/Bot 2 locked in/)).toHaveCount(0);
-  await page.locator('.hand-panel .card').first().click();
+  await page.locator('.hand-panel .card-number').first().click();
   await page.getByRole('button', { name: 'LOCK IN PLAN' }).click();
   await expect(page.getByText(/Bot 2 locked in/)).toBeVisible();
-  await page.getByRole('button', { name: /DISCARD .* END TURN/ }).click();
+  await page.locator('.hand-panel .card-number').first().click();
+  await expect(page.getByRole('button', { name: 'DISCARD 1 + END TURN' })).toBeVisible();
+  await page.getByRole('button', { name: 'DISCARD 1 + END TURN' }).click();
   await expect(page.getByText(/Round 2:/)).toBeVisible();
   const leaveButton = page.getByRole('button', { name: 'LEAVE ROOM' }).first();
   const leaveButtonBox = await leaveButton.boundingBox();

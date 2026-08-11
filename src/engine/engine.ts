@@ -63,10 +63,30 @@ function isBasicSpeed(card: Card): boolean {
   return card.kind === 'BASIC';
 }
 
+export function isOptionalDiscardCard(card: Card): boolean {
+  return card.kind === 'BASIC' || card.kind === 'STARTING_ZERO' || card.kind === 'STARTING_FIVE';
+}
+
 function discardPlayedCards(player: PlayerState): number {
   const discarded = player.played.length;
   if (discarded > 0) player.discard.push(...player.played.splice(0));
   return discarded;
+}
+
+function discardHandCards(player: PlayerState, cardIds: string[]): number {
+  if (cardIds.length === 0) throw new Error('Select at least one card to discard.');
+  if (new Set(cardIds).size !== cardIds.length)
+    throw new Error('A card can only be discarded once.');
+  const cards = cardIds.map((cardId) => player.hand.find((card) => card.id === cardId));
+  const selectedCards = cards.filter((card): card is Card => Boolean(card));
+  if (selectedCards.length !== cards.length)
+    throw new Error('You can only discard cards from your own hand.');
+  if (selectedCards.some((card) => !isOptionalDiscardCard(card)))
+    throw new Error('Heat and Stress cards cannot be discarded from your hand.');
+  const selected = new Set(cardIds);
+  player.hand = player.hand.filter((card) => !selected.has(card.id));
+  player.discard.push(...selectedCards);
+  return selectedCards.length;
 }
 
 function revealBasicSpeed(player: PlayerState, random: RandomSource): number {
@@ -337,6 +357,24 @@ function submitPlan(
   startPlayerResolution(state, state.resolutionOrder[0], random);
 }
 
+function submitOptionalDiscard(
+  state: GameState,
+  playerId: string,
+  cardIds: string[],
+  random: RandomSource,
+): void {
+  if (!state.pending || state.pending.kind !== 'GEAR_REACTION')
+    throw new Error('Optional discard is not open right now.');
+  const player = findPlayer(state, playerId);
+  const discarded = discardHandCards(player, cardIds);
+  log(
+    state,
+    `${player.name} optionally discards ${discarded} card${discarded === 1 ? '' : 's'} from hand.`,
+    player.id,
+  );
+  finishPlayerTurn(state, random);
+}
+
 export function createInitialGame(
   playerSpecs: Array<{
     id: string;
@@ -406,6 +444,9 @@ export function applyGameAction(
   switch (action.type) {
     case 'SUBMIT_PLAN':
       submitPlan(state, action.playerId, action.gear, action.cardIds, random);
+      return state;
+    case 'DISCARD_CARDS':
+      submitOptionalDiscard(state, action.playerId, action.cardIds, random);
       return state;
     case 'ADRENALINE_SPEED':
       if (
