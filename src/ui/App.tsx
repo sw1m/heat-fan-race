@@ -9,6 +9,7 @@ import {
   isSupabaseConfigured,
   joinRemoteRoom,
   loadRemoteRoom,
+  leaveRemoteRoom,
   sendRemoteAction,
   startRemoteRoom,
   subscribeToRoom,
@@ -19,6 +20,7 @@ import {
   addLocalBotSeat,
   createLocalRoom,
   getLocalRoom,
+  clearLocalRoom,
   startLocalRoom,
   type LocalRoom,
   setLocalRoom,
@@ -209,6 +211,19 @@ export function App(): JSX.Element {
     [room],
   );
 
+  const leaveRoom = useCallback(async () => {
+    if (!room) return;
+    setError('');
+    try {
+      if (isRemoteRoom(room)) await leaveRemoteRoom(room.id);
+      else clearLocalRoom();
+      setRoom(null);
+      setScreen('LANDING');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not leave the room.');
+    }
+  }, [room]);
+
   const activeGame = room?.game ?? null;
   const activePlayers = room ? roomPlayers(room) : [];
 
@@ -229,10 +244,7 @@ export function App(): JSX.Element {
         room.hostPlayerId === identity || (!isRemoteRoom(room) && room.players[0]?.id === identity)
       }
       onCopyInvite={() => void navigator.clipboard?.writeText(inviteLink(room.code))}
-      onLeave={() => {
-        setRoom(null);
-        setScreen('LANDING');
-      }}
+      onLeave={leaveRoom}
     />
   );
 }
@@ -372,7 +384,7 @@ function RoomScreen({
   onAction: (action: GameAction) => Promise<void>;
   isHost: boolean;
   onCopyInvite: () => void;
-  onLeave: () => void;
+  onLeave: () => Promise<void>;
 }): JSX.Element {
   return (
     <main className="app-shell">
@@ -438,7 +450,7 @@ function LobbyView({
   isHost: boolean;
   onStart: () => Promise<void>;
   onAddBotSeat: () => void;
-  onLeave: () => void;
+  onLeave: () => Promise<void>;
 }): JSX.Element {
   return (
     <section className="lobby-room page-shell">
@@ -484,7 +496,7 @@ function LobbyView({
             : `${players.length}/${MAX_PLAYERS} seats occupied.`}
         </div>
         <div className="button-row">
-          <button className="secondary-button" onClick={onLeave}>
+          <button className="secondary-button" onClick={() => void onLeave()}>
             LEAVE ROOM
           </button>
           {!isRemoteRoom(room) && players.length < MAX_PLAYERS && (
@@ -518,7 +530,7 @@ function RaceView({
   game: GameState;
   localPlayerId: string;
   onAction: (action: GameAction) => Promise<void>;
-  onLeave: () => void;
+  onLeave: () => Promise<void>;
   isHost: boolean;
   onRestart: () => Promise<void>;
 }): JSX.Element {
@@ -560,8 +572,8 @@ function RaceView({
               ? `${game.players.find((player) => player.id === game.activePlayerId)?.name ?? 'A racer'} is resolving`
               : 'All racers choose simultaneously'}
         </div>
-        <button className="tiny-button" onClick={onLeave}>
-          EXIT TABLE
+        <button className="tiny-button" onClick={() => void onLeave()}>
+          LEAVE ROOM
         </button>
       </div>
       <TrackBoard game={game} />
@@ -793,8 +805,8 @@ function RaceView({
                   RESTART RACE
                 </button>
               )}
-              <button className="secondary-button" onClick={onLeave}>
-                RETURN TO LANDING
+              <button className="secondary-button" onClick={() => void onLeave()}>
+                LEAVE ROOM
               </button>
             </div>
           </div>
