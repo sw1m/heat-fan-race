@@ -63,6 +63,12 @@ function isBasicSpeed(card: Card): boolean {
   return card.kind === 'BASIC';
 }
 
+function discardPlayedCards(player: PlayerState): number {
+  const discarded = player.played.length;
+  if (discarded > 0) player.discard.push(...player.played.splice(0));
+  return discarded;
+}
+
 function revealBasicSpeed(player: PlayerState, random: RandomSource): number {
   while (true) {
     if (player.deck.length === 0 && player.discard.length > 0) {
@@ -115,7 +121,7 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
   const cluttered = selected.some((card) => card.kind === 'HEAT');
   if (cluttered) {
     player.gear = 1;
-    player.discard.push(...player.played.splice(0));
+    discardPlayedCards(player);
     log(state, `${player.name} had a cluttered hand and stays put in 1st gear.`, player.id);
     finishPlayerTurn(state, random);
     return;
@@ -211,7 +217,7 @@ function applyCornerChecks(
     const stressCount = originalGear >= 3 ? 2 : 1;
     for (let index = 0; index < stressCount; index += 1)
       player.hand.push({ id: `${player.id}-spin-stress-${state.round}-${index}`, kind: 'STRESS' });
-    player.discard.push(...player.played.splice(0));
+    discardPlayedCards(player);
     log(
       state,
       `${player.name} spins out at ${corner.label}, resets to 1st gear, and takes ${stressCount} Stress.`,
@@ -229,8 +235,15 @@ function finishPlayerTurn(state: GameState, random: RandomSource): void {
   if (!player) return;
   if (state.pending && state.pending.kind !== 'ADRENALINE')
     applyCornerChecks(state, player, state.pending.speed, random);
-  player.discard.push(...player.played.splice(0));
-  replenishHand(player, random);
+  const discarded = discardPlayedCards(player);
+  const drawn = replenishHand(player, random);
+  if (discarded > 0 || drawn > 0) {
+    log(
+      state,
+      `${player.name} discards ${discarded} played card${discarded === 1 ? '' : 's'} and draws ${drawn} back to a hand of ${player.hand.length}.`,
+      player.id,
+    );
+  }
   state.pending = null;
   const nextIndex = state.resolutionIndex + 1;
   if (nextIndex < state.resolutionOrder.length) {

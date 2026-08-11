@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { PlayerColor } from '../engine/constants';
 import type { GameAction, GameState } from '../engine/types';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -78,20 +79,26 @@ export async function ensureAnonymousIdentity(): Promise<{ userId: string; sessi
   return { userId: result.data.session.user.id, sessionToken: result.data.session.access_token };
 }
 
-export async function createRemoteRoom(nickname: string): Promise<RemoteRoom> {
+export async function createRemoteRoom(nickname: string, color: PlayerColor): Promise<RemoteRoom> {
   const identity = await ensureAnonymousIdentity();
-  return callRpc('create_race_room', { p_nickname: nickname, p_client_identity: identity.userId });
+  return callRpc('create_race_room', {
+    p_nickname: nickname,
+    p_color: color,
+    p_client_identity: identity.userId,
+  });
 }
 
 export async function joinRemoteRoom(
   code: string,
   nickname: string,
+  color: PlayerColor,
   reconnectToken?: string,
 ): Promise<RemoteRoom> {
   const identity = await ensureAnonymousIdentity();
   return callRpc('join_race_room', {
     p_room_code: code,
     p_nickname: nickname,
+    p_color: color,
     p_client_identity: identity.userId,
     p_reconnect_token: reconnectToken ?? null,
   });

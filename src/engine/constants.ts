@@ -1,6 +1,7 @@
 import type { TrackConfig } from './types';
 
-export const PLAYER_COLORS = ['#d44735', '#ee9a2f', '#245c8c', '#2f7a54'];
+export const PLAYER_COLORS = ['#d44735', '#ee9a2f', '#245c8c', '#2f7a54'] as const;
+export type PlayerColor = (typeof PLAYER_COLORS)[number];
 
 export const USA_BEGINNER_TRACK: TrackConfig = {
   id: 'usa-beginner-starter',
