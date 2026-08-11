@@ -25,6 +25,7 @@ export interface RoomPlayer {
   discardCount?: number;
   finished?: boolean;
   finishRank?: number | null;
+  isBot?: boolean;
 }
 
 export interface RemoteRoom {
