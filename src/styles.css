@@ -442,6 +442,18 @@ h2 {
   color: var(--car-color, #b9aa8e);
   filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.5));
 }
+.car-token::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  right: -6px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+}
 .car-token::before {
   content: '';
   position: absolute;
