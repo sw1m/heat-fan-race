@@ -221,7 +221,10 @@ export function chooseBotReaction(state: GameState, playerId: string): GameActio
     .filter((action): action is GameAction => Boolean(action))
     .filter((action) => {
       if (action.type === 'COOLDOWN' || action.type === 'ADRENALINE_COOLDOWN') {
-        return heatInHand(player) > 0 && player.engine.length < USA_ENGINE_HEAT;
+        return (
+          heatInHand(player) > 0 &&
+          player.engine.length < (state.track.engineHeatCapacity ?? USA_ENGINE_HEAT)
+        );
       }
       if (action.type === 'BOOST') return player.engine.length > 0;
       return true;

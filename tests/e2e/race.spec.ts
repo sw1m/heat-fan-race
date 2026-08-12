@@ -23,6 +23,8 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   await expect(page.locator('.stand-stats')).toHaveCount(6);
   await expect(page.locator('.stand-stats').first()).toContainText('/6');
   await expect(page.locator('.stand-stats').first()).toContainText('G1');
+  await expect(page.getByText('DECK HEAT', { exact: true })).toBeVisible();
+  await expect(page.getByText('+1 EXTRA', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'NUMERICAL' })).toHaveClass(/sort-selected/);
   await expect(page.locator('.stand-car')).toHaveCount(6);
   await expect(page.locator('.car-marker')).toHaveCount(6);

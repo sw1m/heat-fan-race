@@ -6,7 +6,7 @@ The authority used for these interpretations is the [Days of Wonder Heat page](h
 
 - Each racer starts with 12 Basic cards: three each of Basic Speed 1, 2, 3, and 4.
 - Each racer also receives three Stress cards and the three standard starting cards: starting 0, starting 5, and one extra starting Heat card. The starting cards are in the beginner deck; they are not Garage choices in this V1.
-- Six Heat cards begin in the engine for the USA setup. The starting Heat card is shuffled into the deck.
+- The selected course supplies the engine capacity. The USA setup supplies six engine slots; the starting Heat card is an additional card shuffled into the beginner deck, not a seventh engine slot. The engine therefore remains `6/6`, while the deck contains seven Heat cards in total.
 - The deck is shuffled, seven cards are dealt, and the gear starts at 1.
 - Heat in hand clutters the hand: it cannot be played as a speed card while enough playable cards exist. If the hand cannot supply the gear’s card count, Heat can cover the missing slots and the car does not move; the gear resets to 1.
 
@@ -17,6 +17,8 @@ Gear changes and card selection are simultaneous. A normal shift changes one gea
 After all selections are locked, players resolve from the car nearest the Race Line to the last car. A car may pass through other cars, but its landing space may not contain more than two cars. Two cars can share a space only by occupying its two lanes; a full space is blocked. When blocked, the engine searches backward for the closest legal landing space and uses the Race Line lane whenever it is open. Spinouts apply the same occupancy rule while scanning backward from the first space before the corner, so simultaneous spinouts cannot create an overfilled space.
 
 ## Speed, Stress, Boost, and Heat
+
+Cooldown uses the selected course's engine capacity, not a global USA constant. The starter deck has one extra Heat card beyond the USA course's six engine slots, so the UI reports `6/6` engine capacity plus the deck Heat separately. After an Adrenaline choice, the normal gear reaction window remains available; a gear-3/4 car may Boost when it has engine Heat.
 
 Basic and the starting 0/5 contribute their printed speed when played normally. A Stress card reveals cards from that player’s draw deck until a Basic Speed card appears; non-Basic reveals, including starting 0/5 and Heat, are discarded and do not supply the Stress speed. Boost pays one engine Heat, reveals by the same Basic-Speed process, adds that speed, and moves again. Heat paid from the engine goes to discard; it is not removed from the game.
 

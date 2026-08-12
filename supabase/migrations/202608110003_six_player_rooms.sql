@@ -129,6 +129,7 @@ begin
     'name', 'USA - one-lap learning race',
     'laps', 1,
     'finishSpace', 40,
+    'engineHeatCapacity', 6,
     'corners', jsonb_build_array(
       jsonb_build_object('id', 'corner-1', 'lineSpace', 10, 'speedLimit', 4, 'label', 'Turn 1'),
       jsonb_build_object('id', 'corner-2', 'lineSpace', 20, 'speedLimit', 3, 'label', 'Turn 2'),

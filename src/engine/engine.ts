@@ -50,15 +50,19 @@ function isHeatCard(card: Card): boolean {
   return card.kind === 'HEAT' || card.kind === 'STARTING_HEAT';
 }
 
-function canCoolDown(player: PlayerState, count: number): boolean {
-  return count > 0 && player.engine.length < USA_ENGINE_HEAT && player.hand.some(isHeatCard);
+function courseHeatCapacity(state: GameState): number {
+  return state.track.engineHeatCapacity ?? USA_ENGINE_HEAT;
 }
 
-function addHeatToEngine(player: PlayerState, count: number): number {
+function canCoolDown(player: PlayerState, count: number, capacity: number): boolean {
+  return count > 0 && player.engine.length < capacity && player.hand.some(isHeatCard);
+}
+
+function addHeatToEngine(player: PlayerState, count: number, capacity: number): number {
   let moved = 0;
   for (
     let index = player.hand.length - 1;
-    index >= 0 && moved < count && player.engine.length < USA_ENGINE_HEAT;
+    index >= 0 && moved < count && player.engine.length < capacity;
     index -= 1
   ) {
     if (isHeatCard(player.hand[index])) {
@@ -188,7 +192,8 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
   const moved = movePlayer(state, player, speed);
   const corners = crossedCorners(state.track, moved.start, moved.end);
   const adrenaline = availableAdrenaline(state, player.id);
-  const adrenalineCooldownAvailable = adrenaline && canCoolDown(player, 1);
+  const capacity = courseHeatCapacity(state);
+  const adrenalineCooldownAvailable = adrenaline && canCoolDown(player, 1, capacity);
   state.pending = {
     kind: adrenaline ? 'ADRENALINE' : 'GEAR_REACTION',
     playerId: player.id,
@@ -204,7 +209,8 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
     movedSpace: moved.end,
     adrenalineSpeedAvailable: adrenaline,
     adrenalineCooldownAvailable,
-    boostAvailable: player.gear >= 3 && player.engine.length > 0,
+    // Adrenaline Cooldown may fill an empty engine before Boost is chosen.
+    boostAvailable: player.gear >= 3,
     cooldownAvailable: player.gear === 1 ? 3 : player.gear === 2 ? 1 : 0,
     slipstreamAvailable: canSlipstream(state, player),
     slipstreamUsed: false,
@@ -224,8 +230,11 @@ function openGearReaction(state: GameState): void {
   const player = findPlayer(state, pending.playerId);
   pending.kind = 'GEAR_REACTION';
   pending.options = ['PASS_REACTION'];
-  if (pending.boostAvailable) pending.options.unshift('BOOST');
-  if (pending.cooldownAvailable > 0 && canCoolDown(player, pending.cooldownAvailable)) {
+  if (pending.boostAvailable && player.engine.length > 0) pending.options.unshift('BOOST');
+  if (
+    pending.cooldownAvailable > 0 &&
+    canCoolDown(player, pending.cooldownAvailable, courseHeatCapacity(state))
+  ) {
     pending.options.unshift('COOLDOWN');
   }
   pending.slipstreamAvailable = !pending.slipstreamUsed && canSlipstream(state, player);
@@ -462,10 +471,13 @@ export function createInitialGame(
       hand: [],
       deck,
       discard: [],
-      engine: Array.from({ length: USA_ENGINE_HEAT }, (_, heatIndex) => ({
-        id: `${spec.id}-engine-heat-${heatIndex}`,
-        kind: 'HEAT' as const,
-      })),
+      engine: Array.from(
+        { length: USA_BEGINNER_TRACK.engineHeatCapacity ?? USA_ENGINE_HEAT },
+        (_, heatIndex) => ({
+          id: `${spec.id}-engine-heat-${heatIndex}`,
+          kind: 'HEAT' as const,
+        }),
+      ),
       played: [],
       finished: false,
       finishRank: null,
@@ -543,10 +555,10 @@ export function applyGameAction(
         !state.pending.adrenalineCooldownAvailable
       )
         throw new Error('Adrenaline cooldown is unavailable.');
-      if (!canCoolDown(player, 1))
+      if (!canCoolDown(player, 1, courseHeatCapacity(state)))
         throw new Error('Adrenaline cooldown is unavailable while the engine is full.');
       state.pending.adrenalineCooldownAvailable = false;
-      if (addHeatToEngine(player, 1) !== 1)
+      if (addHeatToEngine(player, 1, courseHeatCapacity(state)) !== 1)
         throw new Error('Adrenaline cooldown needs Heat in your hand.');
       state.pending.options = state.pending.options.filter(
         (option) => option !== 'ADRENALINE_COOLDOWN',
@@ -575,9 +587,13 @@ export function applyGameAction(
         state.pending.cooldownAvailable <= 0
       )
         throw new Error('Cooldown is unavailable.');
-      if (!canCoolDown(player, 1))
+      if (!canCoolDown(player, 1, courseHeatCapacity(state)))
         throw new Error('Cooldown is unavailable while the engine is full.');
-      const cooled = addHeatToEngine(player, state.pending.cooldownAvailable);
+      const cooled = addHeatToEngine(
+        player,
+        state.pending.cooldownAvailable,
+        courseHeatCapacity(state),
+      );
       if (cooled === 0) throw new Error('Cooldown needs Heat in your hand.');
       state.pending.cooldownAvailable = 0;
       log(state, `${player.name} cools ${cooled} Heat back into the engine.`, player.id);

@@ -3,7 +3,6 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   PLAYER_COLORS,
-  TOTAL_HEAT_CARDS,
   USA_ENGINE_HEAT,
   type PlayerColor,
 } from '../engine/constants';
@@ -73,7 +72,7 @@ function carColorName(color: string): string {
 
 const CAR_MARKER_FILTERS: Record<string, string> = {
   '#d44735': 'hue-rotate(0deg) saturate(1.25) contrast(1.08)',
-  '#f2c230': 'hue-rotate(58deg) saturate(1.4) brightness(1.12)',
+  '#f2c230': 'grayscale(1) sepia(1) saturate(8) hue-rotate(355deg) brightness(1.12) contrast(1.05)',
   '#245c8c': 'hue-rotate(202deg) saturate(0.95)',
   '#2f7a54': 'hue-rotate(138deg) saturate(0.9)',
   '#7b4d9e': 'hue-rotate(274deg) saturate(1.15) brightness(0.95)',
@@ -86,18 +85,29 @@ function carMarkerFilter(color: string): string {
   );
 }
 
-function engineHeatLabel(engineHeat: number | undefined): string {
-  const count = Math.max(0, Math.min(USA_ENGINE_HEAT, Math.round(engineHeat ?? 0)));
-  return `${count}/${USA_ENGINE_HEAT}`;
+function engineHeatLabel(engineHeat: number | undefined, capacity: number): string {
+  const count = Math.max(0, Math.min(capacity, Math.round(engineHeat ?? 0)));
+  return `${count}/${capacity}`;
 }
 
 function heatCardsInHand(player: GameState['players'][number]): number {
   return player.hand.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length;
 }
 
+function heatCardsInPlayerDeck(player: GameState['players'][number]): number {
+  return [player.hand, player.deck, player.discard, player.engine, player.played]
+    .flat()
+    .filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length;
+}
+
+function extraDeckHeatCards(player: GameState['players'][number], courseCapacity: number): number {
+  return Math.max(0, heatCardsInPlayerDeck(player) - courseCapacity);
+}
+
 function cooldownUnavailableReason(
   local: GameState['players'][number],
   pending: GameState['pending'],
+  courseCapacity: number,
 ): string | null {
   if (!pending || pending.playerId !== local.id || pending.kind !== 'GEAR_REACTION') return null;
   if (pending.cooldownAvailable <= 0 || pending.options.includes('COOLDOWN')) return null;
@@ -105,8 +115,8 @@ function cooldownUnavailableReason(
     (card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT',
   );
   if (!hasHeatInHand) return 'Cooldown needs a Heat card in your hand.';
-  if (local.engine.length >= USA_ENGINE_HEAT) {
-    return `Cooldown is ready in gear ${local.gear}, but the engine is full (${USA_ENGINE_HEAT}/${USA_ENGINE_HEAT}). Spend Heat first.`;
+  if (local.engine.length >= courseCapacity) {
+    return `Cooldown is ready in gear ${local.gear}, but the engine is full (${courseCapacity}/${courseCapacity}). Spend Heat first.`;
   }
   return 'Cooldown is unavailable for this reaction.';
 }
@@ -772,10 +782,12 @@ function RaceView({
   const active = game.activePlayerId === local.id;
   const publicState = getPublicState(game, local.id);
   const currentPublic = publicState.players.find((player) => player.id === local.id);
+  const courseCapacity = game.track.engineHeatCapacity ?? USA_ENGINE_HEAT;
+  const deckExtraHeat = extraDeckHeatCards(local, courseCapacity);
   const selectable = game.phase === 'PLANNING' && !game.submitted?.[local.id];
   const discardMode = active && pending?.kind === 'GEAR_REACTION';
   const inviteText = pending?.playerId === local.id ? pending.options : [];
-  const cooldownNotice = cooldownUnavailableReason(local, pending);
+  const cooldownNotice = cooldownUnavailableReason(local, pending, courseCapacity);
   const handById = new Map(local.hand.map((card) => [card.id, card]));
   const displayHand =
     handSort === 'NUMERICAL'
@@ -852,8 +864,10 @@ function RaceView({
               </span>
               <span className="stand-stats">
                 <span>⚙️ G{player.gear}</span>
-                <span title="Engine Heat capacity is six cards. The seventh Heat card stays in the deck, hand, or discard.">
-                  🔥 {engineHeatLabel(player.engineHeat)}
+                <span
+                  title={`Course capacity: ${courseCapacity} engine slots. The starter deck includes ${heatCardsInPlayerDeck(local)} Heat cards.`}
+                >
+                  🔥 {engineHeatLabel(player.engineHeat, courseCapacity)}
                 </span>
               </span>
               <span className="stand-position">{racePositionLabel(game, player)}</span>
@@ -867,8 +881,16 @@ function RaceView({
           </div>
           <div className="metrics">
             <Metric label="GEAR" value={`⚙️ ${local.gear}`} />
-            <Metric label="ENGINE HEAT" value={`🔥 ${engineHeatLabel(local.engine.length)}`} />
+            <Metric
+              label="ENGINE HEAT"
+              value={`🔥 ${engineHeatLabel(local.engine.length, courseCapacity)}`}
+            />
             <Metric label="HEAT IN HAND" value={`🔥 ${heatCardsInHand(local)}`} />
+            <Metric
+              label="DECK HEAT"
+              value={`+${deckExtraHeat} EXTRA`}
+              title={`This deck contains ${heatCardsInPlayerDeck(local)} Heat cards; the course provides ${courseCapacity} engine slots.`}
+            />
             <Metric
               label="DRAW / DISCARD"
               value={`${local.deck.length} / ${local.discard.length}`}
@@ -903,8 +925,9 @@ function RaceView({
               BOOST: gear 3–4, pay 1 Heat, reveal a Basic Speed card.
             </span>
             <span className="helper-text">
-              Starter deck: {TOTAL_HEAT_CARDS} Heat cards total · engine capacity: {USA_ENGINE_HEAT}{' '}
-              slots.
+              Course: {courseCapacity} engine slots · this deck: {heatCardsInPlayerDeck(local)} Heat
+              cards
+              {deckExtraHeat > 0 ? ` (+${deckExtraHeat} extra deck Heat)` : ''}.
             </span>
           </div>
         </section>
@@ -1192,9 +1215,17 @@ function RaceView({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }): JSX.Element {
+function Metric({
+  label,
+  value,
+  title,
+}: {
+  label: string;
+  value: string;
+  title?: string;
+}): JSX.Element {
   return (
-    <div className="metric">
+    <div className="metric" title={title}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
