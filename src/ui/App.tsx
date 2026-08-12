@@ -8,6 +8,7 @@ import {
 } from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState, isOptionalDiscardCard } from '../engine/engine';
+import { summarizeHeat } from '../engine/heat';
 import { distanceToNextCorner, nextCorner } from '../engine/track';
 import type { Card, GameAction, GameState } from '../engine/types';
 import carMarkerAsset from '../assets/heat-race-car.png';
@@ -94,16 +95,6 @@ function heatCardsInHand(player: GameState['players'][number]): number {
   return player.hand.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length;
 }
 
-function heatCardsInPlayerDeck(player: GameState['players'][number]): number {
-  return [player.hand, player.deck, player.discard, player.engine, player.played]
-    .flat()
-    .filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length;
-}
-
-function extraDeckHeatCards(player: GameState['players'][number], courseCapacity: number): number {
-  return Math.max(0, heatCardsInPlayerDeck(player) - courseCapacity);
-}
-
 function cooldownUnavailableReason(
   local: GameState['players'][number],
   pending: GameState['pending'],
@@ -116,7 +107,7 @@ function cooldownUnavailableReason(
   );
   if (!hasHeatInHand) return 'Cooldown needs a Heat card in your hand.';
   if (local.engine.length >= courseCapacity) {
-    return `Cooldown is ready in gear ${local.gear}, but the engine is full (${courseCapacity}/${courseCapacity}). Spend Heat first.`;
+    return `Cooldown is ready in gear ${local.gear}, but the engine is full (${courseCapacity}/${courseCapacity}). Spend engine Heat before cooling the extra deck card.`;
   }
   return 'Cooldown is unavailable for this reaction.';
 }
@@ -783,7 +774,7 @@ function RaceView({
   const publicState = getPublicState(game, local.id);
   const currentPublic = publicState.players.find((player) => player.id === local.id);
   const courseCapacity = game.track.engineHeatCapacity ?? USA_ENGINE_HEAT;
-  const deckExtraHeat = extraDeckHeatCards(local, courseCapacity);
+  const heatSummary = summarizeHeat(local, courseCapacity);
   const selectable = game.phase === 'PLANNING' && !game.submitted?.[local.id];
   const discardMode = active && pending?.kind === 'GEAR_REACTION';
   const inviteText = pending?.playerId === local.id ? pending.options : [];
@@ -865,9 +856,14 @@ function RaceView({
               <span className="stand-stats">
                 <span>⚙️ G{player.gear}</span>
                 <span
-                  title={`Course capacity: ${courseCapacity} engine slots. The starter deck includes ${heatCardsInPlayerDeck(local)} Heat cards.`}
+                  title={
+                    player.id === local.id
+                      ? `Engine: ${courseCapacity} course slots. Your deck has ${heatSummary.total} Heat cards; ${heatSummary.available} are currently available.`
+                      : `Course engine capacity: ${courseCapacity} Heat slots.`
+                  }
                 >
                   🔥 {engineHeatLabel(player.engineHeat, courseCapacity)}
+                  {player.id === local.id && ` · ${heatSummary.available}/${heatSummary.total}`}
                 </span>
               </span>
               <span className="stand-position">{racePositionLabel(game, player)}</span>
@@ -885,11 +881,16 @@ function RaceView({
               label="ENGINE HEAT"
               value={`🔥 ${engineHeatLabel(local.engine.length, courseCapacity)}`}
             />
+            <Metric
+              label="HEAT AVAILABLE"
+              value={`🔥 ${heatSummary.available}/${heatSummary.total}`}
+              title="Heat in your engine, hand, or draw pile. The engine itself still has only the course-provided number of slots."
+            />
             <Metric label="HEAT IN HAND" value={`🔥 ${heatCardsInHand(local)}`} />
             <Metric
-              label="DECK HEAT"
-              value={`+${deckExtraHeat} EXTRA`}
-              title={`This deck contains ${heatCardsInPlayerDeck(local)} Heat cards; the course provides ${courseCapacity} engine slots.`}
+              label="EXTRA DECK HEAT"
+              value={`+${heatSummary.extraDeckCards}`}
+              title={`This player deck contains ${heatSummary.total} Heat cards; the course provides ${courseCapacity} engine slots.`}
             />
             <Metric
               label="DRAW / DISCARD"
@@ -925,9 +926,11 @@ function RaceView({
               BOOST: gear 3–4, pay 1 Heat, reveal a Basic Speed card.
             </span>
             <span className="helper-text">
-              Course: {courseCapacity} engine slots · this deck: {heatCardsInPlayerDeck(local)} Heat
-              cards
-              {deckExtraHeat > 0 ? ` (+${deckExtraHeat} extra deck Heat)` : ''}.
+              Course: {courseCapacity} engine slots · this deck: {heatSummary.total} Heat cards
+              {heatSummary.extraDeckCards > 0
+                ? ` (+${heatSummary.extraDeckCards} extra deck Heat)`
+                : ''}
+              .
             </span>
           </div>
         </section>
