@@ -85,9 +85,13 @@ function carMarkerFilter(color: string): string {
   );
 }
 
-function heatAvailableLabel(engineHeat: number | undefined): string {
-  const count = Math.max(0, Math.min(TOTAL_HEAT_CARDS, Math.round(engineHeat ?? 0)));
-  return `${count}/${TOTAL_HEAT_CARDS}`;
+function engineHeatLabel(engineHeat: number | undefined): string {
+  const count = Math.max(0, Math.min(USA_ENGINE_HEAT, Math.round(engineHeat ?? 0)));
+  return `${count}/${USA_ENGINE_HEAT}`;
+}
+
+function heatCardsInHand(player: GameState['players'][number]): number {
+  return player.hand.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length;
 }
 
 function cooldownUnavailableReason(
@@ -828,7 +832,9 @@ function RaceView({
               </span>
               <span className="stand-stats">
                 <span>⚙️ G{player.gear}</span>
-                <span>🔥 {heatAvailableLabel(player.engineHeat)}</span>
+                <span title="Engine Heat capacity is six cards. The seventh Heat card stays in the deck, hand, or discard.">
+                  🔥 {engineHeatLabel(player.engineHeat)}
+                </span>
               </span>
               <span className="stand-position">{racePositionLabel(game, player)}</span>
             </div>
@@ -841,10 +847,8 @@ function RaceView({
           </div>
           <div className="metrics">
             <Metric label="GEAR" value={`⚙️ ${local.gear}`} />
-            <Metric
-              label="HEAT AVAILABLE"
-              value={`🔥 ${heatAvailableLabel(local.engine.length)}`}
-            />
+            <Metric label="ENGINE HEAT" value={`🔥 ${engineHeatLabel(local.engine.length)}`} />
+            <Metric label="HEAT IN HAND" value={`🔥 ${heatCardsInHand(local)}`} />
             <Metric
               label="DRAW / DISCARD"
               value={`${local.deck.length} / ${local.discard.length}`}
@@ -877,6 +881,10 @@ function RaceView({
             </span>
             <span className="helper-text">
               BOOST: gear 3–4, pay 1 Heat, reveal a Basic Speed card.
+            </span>
+            <span className="helper-text">
+              Starter deck: {TOTAL_HEAT_CARDS} Heat cards total · engine capacity: {USA_ENGINE_HEAT}{' '}
+              slots.
             </span>
           </div>
         </section>

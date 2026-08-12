@@ -28,7 +28,7 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
   await expect(page.locator('.stand-name', { hasText: 'Bot 2' })).toBeVisible();
   await expect(page.locator('.stand-stats')).toHaveCount(6);
-  await expect(page.locator('.stand-stats').first()).toContainText('/7');
+  await expect(page.locator('.stand-stats').first()).toContainText('/6');
   await expect(page.locator('.stand-stats').first()).toContainText('G1');
   await expect(page.getByRole('button', { name: 'NUMERICAL' })).toHaveClass(/sort-selected/);
   await expect(page.locator('.stand-car')).toHaveCount(6);
