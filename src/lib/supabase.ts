@@ -22,6 +22,7 @@ export interface RoomPlayer {
   position?: { space: number; lane: 0 | 1 };
   gear?: number;
   engineHeat?: number;
+  engineHeatCapacity?: number;
   handCount?: number;
   deckCount?: number;
   discardCount?: number;

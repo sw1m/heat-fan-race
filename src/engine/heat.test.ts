@@ -3,7 +3,7 @@ import { applyGameAction, createInitialGame } from './engine';
 import { summarizeHeat } from './heat';
 
 describe('Heat capacity and supply', () => {
-  it('keeps the starter deck extra Heat outside the six course engine slots', () => {
+  it('adds the starter Heat card as an extra engine slot', () => {
     const state = createInitialGame(
       [
         { id: 'p1', name: 'Red', seat: 0, color: '#d44735' },
@@ -15,14 +15,15 @@ describe('Heat capacity and supply', () => {
     const summary = summarizeHeat(player, state.track.engineHeatCapacity ?? 0);
 
     expect(summary.engine).toBe(6);
-    expect(summary.engineCapacity).toBe(6);
+    expect(summary.courseCapacity).toBe(6);
+    expect(summary.engineCapacity).toBe(7);
     expect(summary.total).toBe(7);
     expect(summary.available).toBe(7);
     expect(summary.extraDeckCards).toBe(1);
     expect(['HAND', 'DRAW PILE']).toContain(summary.startingHeatLocation);
   });
 
-  it('does not offer second-gear Cooldown while the course engine is full even when the extra card exists', () => {
+  it('keeps the extra engine slot available when the starter Heat is in hand', () => {
     const state = createInitialGame(
       [
         { id: 'p1', name: 'Red', seat: 0, color: '#d44735' },
@@ -34,7 +35,8 @@ describe('Heat capacity and supply', () => {
     const summary = summarizeHeat(player, state.track.engineHeatCapacity ?? 0);
 
     expect(summary.total).toBe(7);
-    expect(summary.engine).toBe(summary.engineCapacity);
+    expect(summary.engine).toBe(6);
+    expect(summary.engineCapacity).toBe(7);
     expect(summary.available).toBe(7);
     expect(summary.startingHeatLocation).toBe('HAND');
   });
@@ -48,7 +50,6 @@ describe('Heat capacity and supply', () => {
       () => 0.42,
     );
     const player = state.players[0];
-    player.discard.push(...player.engine.splice(5));
     const startingHeatHandIndex = player.hand.findIndex((card) => card.kind === 'STARTING_HEAT');
     let startingHeat =
       startingHeatHandIndex >= 0 ? player.hand.splice(startingHeatHandIndex, 1)[0] : undefined;
@@ -80,7 +81,8 @@ describe('Heat capacity and supply', () => {
     expect(state.pending?.options).toContain('COOLDOWN');
     state = applyGameAction(state, { type: 'COOLDOWN', playerId: 'p1' }, () => 0.42);
     const after = summarizeHeat(state.players[0], state.track.engineHeatCapacity ?? 0);
-    expect(after.engine).toBe(6);
+    expect(after.engine).toBe(7);
+    expect(after.engineCapacity).toBe(7);
     expect(after.total).toBe(7);
     expect(after.startingHeatLocation).toBe('ENGINE');
   });

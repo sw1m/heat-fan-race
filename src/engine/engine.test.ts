@@ -396,16 +396,27 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.pending?.options).not.toContain('COOLDOWN');
   });
 
-  it('does not offer second-gear cooldown while the six-slot engine is full', () => {
+  it('does not offer second-gear cooldown while the effective seven-slot engine is full', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     const p1 = state.players[0];
+    const starterHeat = p1.hand.find((card) => card.kind === 'STARTING_HEAT');
+    if (!starterHeat) {
+      const starterHeatIndex = p1.deck.findIndex((card) => card.kind === 'STARTING_HEAT');
+      expect(starterHeatIndex).toBeGreaterThanOrEqual(0);
+      p1.engine.push(p1.deck.splice(starterHeatIndex, 1)[0]);
+    } else {
+      p1.engine.push(p1.hand.splice(p1.hand.indexOf(starterHeat), 1)[0]);
+    }
     const speedCards = p1.hand
       .filter(
         (card) =>
           card.kind === 'BASIC' || card.kind === 'STARTING_ZERO' || card.kind === 'STARTING_FIVE',
       )
       .slice(0, 2);
-    const heat = p1.hand.find((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT')!;
+    let heat = p1.hand.find((card) => card.kind === 'HEAT');
+    if (!heat) {
+      heat = { id: 'test-engine-full-heat', kind: 'HEAT' };
+    }
     p1.hand = [...speedCards, heat];
     state.players[1].hand = [state.players[1].hand.find((card) => card.kind === 'BASIC')!];
     state = applyGameAction(
@@ -419,7 +430,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
       fixedRandom,
     );
 
-    expect(state.players[0].engine).toHaveLength(6);
+    expect(state.players[0].engine).toHaveLength(7);
     expect(state.pending?.cooldownAvailable).toBe(1);
     expect(state.pending?.options).not.toContain('COOLDOWN');
   });

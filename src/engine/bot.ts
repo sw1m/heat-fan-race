@@ -1,5 +1,6 @@
 import { USA_ENGINE_HEAT } from './constants';
 import { applyGameAction } from './engine';
+import { engineHeatCapacityForPlayer } from './heat';
 import { chooseLandingPosition, crossedCorners } from './track';
 import type { Card, GameAction, GameState, PlayerState, RandomSource } from './types';
 
@@ -223,7 +224,8 @@ export function chooseBotReaction(state: GameState, playerId: string): GameActio
       if (action.type === 'COOLDOWN' || action.type === 'ADRENALINE_COOLDOWN') {
         return (
           heatInHand(player) > 0 &&
-          player.engine.length < (state.track.engineHeatCapacity ?? USA_ENGINE_HEAT)
+          player.engine.length <
+            engineHeatCapacityForPlayer(player, state.track.engineHeatCapacity ?? USA_ENGINE_HEAT)
         );
       }
       if (action.type === 'BOOST') return player.engine.length > 0;

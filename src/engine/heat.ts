@@ -6,6 +6,7 @@ export function isHeatCard(card: Card): boolean {
 
 export interface HeatSummary {
   engine: number;
+  courseCapacity: number;
   engineCapacity: number;
   total: number;
   available: number;
@@ -27,29 +28,41 @@ function startingHeatLocation(player: PlayerState): HeatSummary['startingHeatLoc
 }
 
 /**
- * Heat has two different limits in the basic game: the course supplies a
- * fixed number of engine slots, while a player's deck may contain additional
- * Heat cards outside those slots.
+ * The course supplies the base number of engine slots. Special Heat cards in
+ * the player's deck add one usable engine slot each, even while that card is
+ * in the hand, draw pile, discard, or engine.
  *
  * `available` is Heat currently in the engine, hand, or draw pile. Cards in
  * discard/played are not immediately available to Cooldown or payment.
  */
-export function summarizeHeat(player: PlayerState, engineCapacity: number): HeatSummary {
+export function countExtraEngineSlots(player: PlayerState): number {
+  return [player.engine, player.hand, player.deck, player.discard, player.played]
+    .flat()
+    .filter((card) => card.kind === 'STARTING_HEAT').length;
+}
+
+export function engineHeatCapacityForPlayer(player: PlayerState, courseCapacity: number): number {
+  return courseCapacity + countExtraEngineSlots(player);
+}
+
+export function summarizeHeat(player: PlayerState, courseCapacity: number): HeatSummary {
   const inHand = player.hand.filter(isHeatCard).length;
   const inDeck = player.deck.filter(isHeatCard).length;
   const inDiscard = player.discard.filter(isHeatCard).length;
   const inPlayed = player.played.filter(isHeatCard).length;
   const total = player.engine.length + inHand + inDeck + inDiscard + inPlayed;
+  const extraDeckCards = countExtraEngineSlots(player);
   return {
     engine: player.engine.length,
-    engineCapacity,
+    courseCapacity,
+    engineCapacity: courseCapacity + extraDeckCards,
     total,
     available: player.engine.length + inHand + inDeck,
     inHand,
     inDeck,
     inDiscard,
     inPlayed,
-    extraDeckCards: Math.max(0, total - engineCapacity),
+    extraDeckCards,
     startingHeatLocation: startingHeatLocation(player),
   };
 }

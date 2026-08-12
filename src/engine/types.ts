@@ -57,6 +57,8 @@ export interface PlayerState {
   finishRank: number | null;
   finishProgress: number | null;
   finishRound: number | null;
+  /** Effective capacity: course base slots plus special deck Heat slots. */
+  engineHeatCapacity?: number;
   controller?: 'HUMAN' | 'BOT';
   disconnected?: boolean;
 }

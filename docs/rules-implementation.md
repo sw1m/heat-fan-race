@@ -6,7 +6,7 @@ The authority used for these interpretations is the [Days of Wonder Heat page](h
 
 - Each racer starts with 12 Basic cards: three each of Basic Speed 1, 2, 3, and 4.
 - Each racer also receives three Stress cards and the three standard starting cards: starting 0, starting 5, and one extra starting Heat card. The starting cards are in the beginner deck; they are not Garage choices in this V1.
-- The selected course supplies the engine capacity. The USA setup supplies six engine slots; the starting Heat card is an additional card shuffled into the beginner deck, not a seventh engine slot. The engine therefore remains `6/6`, while the deck contains seven Heat cards in total.
+- The selected course supplies the base engine capacity. The USA setup starts with six Heat cards in the engine, while the starting Heat card is shuffled into the beginner deck. That special card works as an additional engine slot, so a USA beginner car has an effective capacity of seven: it starts at `6/7` and can reach `7/7` when the starting Heat is cooled into the engine.
 - The deck is shuffled, seven cards are dealt, and the gear starts at 1.
 - The extra starter Heat remains a real card throughout the hand, draw-pile, discard-pile, played-card, and engine transitions. The UI reports its current location so an extra card in the draw pile is not mistaken for a removed card.
 - Heat in hand clutters the hand: it cannot be played as a speed card while enough playable cards exist. If the hand cannot supply the gear’s card count, Heat can cover the missing slots and the car does not move; the gear resets to 1.
@@ -19,7 +19,7 @@ After all selections are locked, players resolve from the car nearest the Race L
 
 ## Speed, Stress, Boost, and Heat
 
-Cooldown uses the selected course's engine capacity, not a global USA constant. The starter deck has one extra Heat card beyond the USA course's six engine slots. The UI therefore reports the engine as `6/6` and the player's available Heat supply separately as `7/7` at setup; it never treats the extra deck card as a seventh engine slot. After an Adrenaline choice, the normal gear reaction window remains available; a gear-3/4 car may Boost when it has engine Heat.
+Cooldown uses the player's effective engine capacity: the selected course's base capacity plus one slot for each special Heat card in that player's deck. The USA starter deck therefore reports `6/7` at setup and permits the seventh Heat card to enter the engine. The available supply is seven Heat cards at setup. After an Adrenaline choice, the normal gear reaction window remains available; a gear-3/4 car may Boost when it has engine Heat.
 
 Basic and the starting 0/5 contribute their printed speed when played normally. A Stress card reveals cards from that player’s draw deck until a Basic Speed card appears; non-Basic reveals, including starting 0/5 and Heat, are discarded and do not supply the Stress speed. Boost pays one engine Heat, reveals by the same Basic-Speed process, adds that speed, and moves again. Heat paid from the engine goes to discard; it is not removed from the game.
 

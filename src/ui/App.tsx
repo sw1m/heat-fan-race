@@ -3,6 +3,7 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   PLAYER_COLORS,
+  STARTER_DECK_EXTRA_HEAT_CARDS,
   USA_ENGINE_HEAT,
   type PlayerColor,
 } from '../engine/constants';
@@ -104,7 +105,7 @@ function starterHeatStatus(location: HeatSummary['startingHeatLocation']): strin
     case 'ENGINE':
       return 'IN ENGINE';
     case 'HAND':
-      return 'IN HAND - usable for Cooldown';
+      return 'IN HAND - available for Cooldown';
     case 'DRAW PILE':
       return 'IN DRAW PILE - still in the starter deck';
     case 'DISCARD':
@@ -123,7 +124,7 @@ function heatCardsInHand(player: GameState['players'][number]): number {
 function cooldownUnavailableReason(
   local: GameState['players'][number],
   pending: GameState['pending'],
-  courseCapacity: number,
+  engineCapacity: number,
 ): string | null {
   if (!pending || pending.playerId !== local.id || pending.kind !== 'GEAR_REACTION') return null;
   if (pending.cooldownAvailable <= 0 || pending.options.includes('COOLDOWN')) return null;
@@ -131,8 +132,8 @@ function cooldownUnavailableReason(
     (card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT',
   );
   if (!hasHeatInHand) return 'Cooldown needs a Heat card in your hand.';
-  if (local.engine.length >= courseCapacity) {
-    return `Cooldown is ready in gear ${local.gear}, but the engine is full (${courseCapacity}/${courseCapacity}). Spend engine Heat before cooling the extra deck card.`;
+  if (local.engine.length >= engineCapacity) {
+    return `Cooldown is ready in gear ${local.gear}, but the engine is full (${engineCapacity}/${engineCapacity}). Spend engine Heat before cooling another Heat card.`;
   }
   return 'Cooldown is unavailable for this reaction.';
 }
@@ -843,7 +844,7 @@ function RaceView({
   const selectable = game.phase === 'PLANNING' && !game.submitted?.[local.id];
   const discardMode = active && pending?.kind === 'GEAR_REACTION';
   const inviteText = pending?.playerId === local.id ? pending.options : [];
-  const cooldownNotice = cooldownUnavailableReason(local, pending, courseCapacity);
+  const cooldownNotice = cooldownUnavailableReason(local, pending, heatSummary.engineCapacity);
   const handById = new Map(local.hand.map((card) => [card.id, card]));
   const displayHand =
     handSort === 'NUMERICAL'
@@ -923,12 +924,20 @@ function RaceView({
                 <span
                   title={
                     player.id === local.id
-                      ? `Engine: ${courseCapacity} course slots. Your deck has ${heatSummary.total} Heat cards; ${heatSummary.available} are currently available.`
-                      : `Course engine capacity: ${courseCapacity} Heat slots.`
+                      ? `Engine: ${heatSummary.engineCapacity} effective slots (${courseCapacity} course + ${heatSummary.extraDeckCards} special). Your deck has ${heatSummary.total} Heat cards; ${heatSummary.available} are currently available.`
+                      : `Engine: ${player.engineHeatCapacity ?? courseCapacity + STARTER_DECK_EXTRA_HEAT_CARDS} effective Heat slots (${courseCapacity} course plus special deck Heat).`
                   }
                 >
-                  🔥 {engineHeatLabel(player.engineHeat, courseCapacity)}
-                  {player.id === local.id && ` · ${heatSummary.available}/${heatSummary.total}`}
+                  🔥{' '}
+                  {engineHeatLabel(
+                    player.engineHeat,
+                    player.id === local.id
+                      ? heatSummary.engineCapacity
+                      : (player.engineHeatCapacity ??
+                          courseCapacity + STARTER_DECK_EXTRA_HEAT_CARDS),
+                  )}
+                  {player.id === local.id &&
+                    ` · ${heatSummary.available}/${heatSummary.engineCapacity}`}
                 </span>
               </span>
               <span className="stand-position">{racePositionLabel(game, player)}</span>
@@ -944,18 +953,18 @@ function RaceView({
             <Metric label="GEAR" value={`⚙️ ${local.gear}`} />
             <Metric
               label="ENGINE HEAT"
-              value={`🔥 ${engineHeatLabel(local.engine.length, courseCapacity)}`}
+              value={`🔥 ${engineHeatLabel(local.engine.length, heatSummary.engineCapacity)}`}
             />
             <Metric
               label="HEAT AVAILABLE"
-              value={`🔥 ${heatSummary.available}/${heatSummary.total}`}
-              title="Heat in your engine, hand, or draw pile. The engine itself still has only the course-provided number of slots."
+              value={`🔥 ${heatSummary.available}/${heatSummary.engineCapacity}`}
+              title="Heat currently in your engine, hand, or draw pile. Effective engine capacity is the course amount plus special deck Heat slots."
             />
             <Metric label="HEAT IN HAND" value={`🔥 ${heatCardsInHand(local)}`} />
             <Metric
               label="EXTRA DECK HEAT"
               value={`+${heatSummary.extraDeckCards}`}
-              title={`This player deck contains ${heatSummary.total} Heat cards; the course provides ${courseCapacity} engine slots.`}
+              title={`This player deck adds ${heatSummary.extraDeckCards} special engine slot${heatSummary.extraDeckCards === 1 ? '' : 's'} to the ${courseCapacity} course slot${courseCapacity === 1 ? '' : 's'}.`}
             />
             <Metric
               label="DRAW / DISCARD"
@@ -991,9 +1000,10 @@ function RaceView({
               BOOST: gear 3–4, pay 1 Heat, reveal a Basic Speed card.
             </span>
             <span className="helper-text">
-              Course: {courseCapacity} engine slots · this deck: {heatSummary.total} Heat cards
+              Course: {courseCapacity} base engine slots · effective capacity:{' '}
+              {heatSummary.engineCapacity} · this deck: {heatSummary.total} Heat cards
               {heatSummary.extraDeckCards > 0
-                ? ` (+${heatSummary.extraDeckCards} extra deck Heat)`
+                ? ` (+${heatSummary.extraDeckCards} special Heat slot${heatSummary.extraDeckCards === 1 ? '' : 's'})`
                 : ''}
               .
             </span>
