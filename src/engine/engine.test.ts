@@ -360,6 +360,68 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(JSON.stringify(publicState)).not.toContain('cardIds');
   });
 
+  it('offers one cooldown after shifting into second gear', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    const p1 = state.players[0];
+    p1.engine = p1.engine.slice(0, 5);
+    const speedCards = p1.hand
+      .filter(
+        (card) =>
+          card.kind === 'BASIC' || card.kind === 'STARTING_ZERO' || card.kind === 'STARTING_FIVE',
+      )
+      .slice(0, 2);
+    const heat = p1.hand.find((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT')!;
+    p1.hand = [...speedCards, heat];
+    state.players[1].hand = [state.players[1].hand.find((card) => card.kind === 'BASIC')!];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 2, cardIds: speedCards.map((card) => card.id) },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: [state.players[1].hand[0].id] },
+      fixedRandom,
+    );
+
+    expect(state.pending?.playerId).toBe('p1');
+    expect(state.pending?.cooldownAvailable).toBe(1);
+    expect(state.pending?.options).toContain('COOLDOWN');
+
+    state = applyGameAction(state, { type: 'COOLDOWN', playerId: 'p1' }, fixedRandom);
+    expect(state.players[0].engine).toHaveLength(6);
+    expect(state.players[0].hand.map((card) => card.id)).not.toContain(heat.id);
+    expect(state.pending?.options).not.toContain('COOLDOWN');
+  });
+
+  it('does not offer second-gear cooldown while the six-slot engine is full', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    const p1 = state.players[0];
+    const speedCards = p1.hand
+      .filter(
+        (card) =>
+          card.kind === 'BASIC' || card.kind === 'STARTING_ZERO' || card.kind === 'STARTING_FIVE',
+      )
+      .slice(0, 2);
+    const heat = p1.hand.find((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT')!;
+    p1.hand = [...speedCards, heat];
+    state.players[1].hand = [state.players[1].hand.find((card) => card.kind === 'BASIC')!];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 2, cardIds: speedCards.map((card) => card.id) },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: [state.players[1].hand[0].id] },
+      fixedRandom,
+    );
+
+    expect(state.players[0].engine).toHaveLength(6);
+    expect(state.pending?.cooldownAvailable).toBe(1);
+    expect(state.pending?.options).not.toContain('COOLDOWN');
+  });
+
   it('treats the starting Heat card as Heat when a hand is cluttered', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     state.players[0].hand = [{ id: 'starter-heat', kind: 'STARTING_HEAT' }];

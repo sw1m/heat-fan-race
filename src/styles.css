@@ -1132,6 +1132,12 @@ h2 {
   flex-wrap: wrap;
   margin-top: 12px;
 }
+.reaction-note {
+  margin-top: 10px;
+  color: #f0d98a;
+  font-size: 10px;
+  font-weight: 700;
+}
 .action-button {
   padding: 10px 12px;
   font-size: 9px;
