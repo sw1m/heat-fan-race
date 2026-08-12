@@ -121,3 +121,26 @@ export function startLocalRoom(room: LocalRoom): LocalRoom {
   setLocalRoom(next);
   return next;
 }
+
+export function restartLocalRoom(room: LocalRoom): LocalRoom {
+  if (room.game?.phase !== 'FINISHED')
+    throw new Error('A new race is available after the current race is finished.');
+  return startLocalRoom({
+    ...room,
+    status: 'LOBBY',
+    players: room.players.map((player) => ({
+      ...player,
+      connected: true,
+      submitted: false,
+      position: undefined,
+      gear: undefined,
+      engineHeat: undefined,
+      handCount: undefined,
+      deckCount: undefined,
+      discardCount: undefined,
+      finished: undefined,
+      finishRank: undefined,
+      finishRound: undefined,
+    })),
+  });
+}

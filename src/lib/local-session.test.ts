@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { addLocalBotSeat, createLocalRoom, removeLocalPlayer } from './local-session';
+import {
+  addLocalBotSeat,
+  createLocalRoom,
+  removeLocalPlayer,
+  restartLocalRoom,
+  startLocalRoom,
+} from './local-session';
+import type { GameState } from '../engine/types';
 
 beforeEach(() => {
   const values = new Map<string, string>();
@@ -35,5 +42,32 @@ describe('local lobby seat management', () => {
     room = addLocalBotSeat(room);
     room.status = 'RACING';
     expect(() => removeLocalPlayer(room, 'bot-seat-2')).toThrow(/before the race starts/);
+  });
+
+  it('starts a clean new local race after the finished race', () => {
+    let room = createLocalRoom('Host', 'host');
+    room = addLocalBotSeat(room);
+    room = startLocalRoom(room);
+    room = {
+      ...room,
+      status: 'FINISHED',
+      game: { ...room.game!, phase: 'FINISHED' } as GameState,
+    };
+
+    const restarted = restartLocalRoom(room);
+
+    expect(restarted.status).toBe('RACING');
+    expect(restarted.game?.phase).toBe('PLANNING');
+    expect(restarted.game?.round).toBe(1);
+    expect(restarted.game?.players.map((player) => player.position.space)).toEqual([0, 0]);
+    expect(restarted.players.every((player) => !player.finished && !player.submitted)).toBe(true);
+  });
+
+  it('rejects a local restart before the race is finished', () => {
+    let room = createLocalRoom('Host', 'host');
+    room = addLocalBotSeat(room);
+    room = startLocalRoom(room);
+
+    expect(() => restartLocalRoom(room)).toThrow(/after the current race is finished/);
   });
 });

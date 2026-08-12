@@ -20,6 +20,7 @@ import {
   joinRemoteRoom,
   loadRemoteRoom,
   leaveRemoteRoom,
+  restartRemoteRoom,
   sendRemoteAction,
   startRemoteRoom,
   removeRemotePlayer,
@@ -35,6 +36,7 @@ import {
   fillLocalBotSeats,
   nextOpenSeat,
   removeLocalPlayer,
+  restartLocalRoom,
   startLocalRoom,
   type LocalRoom,
   setLocalRoom,
@@ -370,6 +372,17 @@ export function App(): JSX.Element {
     }
   }, [room]);
 
+  const onRestart = useCallback(async () => {
+    if (!room) return;
+    setError('');
+    try {
+      const next = isRemoteRoom(room) ? await restartRemoteRoom(room.id) : restartLocalRoom(room);
+      setRoom(next);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not start the new race.');
+    }
+  }, [room]);
+
   const onAddBotSeat = useCallback(() => {
     if (!room || isRemoteRoom(room)) return;
     setRoom(addLocalBotSeat(room));
@@ -456,6 +469,7 @@ export function App(): JSX.Element {
       isHost={isRoomHost(room, identity)}
       onCopyInvite={() => void navigator.clipboard?.writeText(inviteLink(room.code))}
       onLeave={leaveRoom}
+      onRestart={onRestart}
     />
   );
 }
@@ -627,6 +641,7 @@ function RoomScreen({
   isHost,
   onCopyInvite,
   onLeave,
+  onRestart,
 }: {
   room: ActiveRoom;
   identity: string;
@@ -642,6 +657,7 @@ function RoomScreen({
   isHost: boolean;
   onCopyInvite: () => void;
   onLeave: () => Promise<void>;
+  onRestart: () => Promise<void>;
 }): JSX.Element {
   return (
     <main className="app-shell">
@@ -687,7 +703,7 @@ function RoomScreen({
           onAction={onAction}
           onLeave={onLeave}
           isHost={isHost}
-          onRestart={onStart}
+          onRestart={onRestart}
         />
       ) : (
         <div className="loading-card">Loading authoritative race state…</div>
