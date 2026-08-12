@@ -21,6 +21,7 @@ import {
   leaveRemoteRoom,
   sendRemoteAction,
   startRemoteRoom,
+  removeRemotePlayer,
   subscribeToRoom,
   type RemoteRoom,
   type RoomPlayer,
@@ -31,6 +32,8 @@ import {
   getLocalRoom,
   clearLocalRoom,
   fillLocalBotSeats,
+  nextOpenSeat,
+  removeLocalPlayer,
   startLocalRoom,
   type LocalRoom,
   setLocalRoom,
@@ -46,6 +49,11 @@ type ActiveRoom = LocalRoom | RemoteRoom;
 
 function isRemoteRoom(room: ActiveRoom): room is RemoteRoom {
   return 'id' in room;
+}
+
+function isRoomHost(room: ActiveRoom, identity: string): boolean {
+  if (isRemoteRoom(room)) return room.players.some((player) => player.isMe && player.isHost);
+  return room.hostPlayerId === identity;
 }
 
 function inviteLink(code: string): string {
@@ -257,7 +265,14 @@ export function App(): JSX.Element {
           setRoom(next);
           setReconnecting(false);
         })
-        .catch(() => setReconnecting(false));
+        .catch((cause) => {
+          setReconnecting(false);
+          if (cause instanceof Error && cause.message.includes('NOT_A_ROOM_MEMBER')) {
+            setError('The host removed you from the lobby.');
+            setRoom(null);
+            setScreen('LANDING');
+          }
+        });
     });
   }, [room]);
 
@@ -312,7 +327,8 @@ export function App(): JSX.Element {
           throw new Error(
             `${carColorName(color)} is already taken in that room. Choose another car color.`,
           );
-        const seat = saved.players.length;
+        const seat = nextOpenSeat(saved.players);
+        if (seat === null) throw new Error('That room is full.');
         const next: LocalRoom = {
           ...saved,
           players: [
@@ -326,7 +342,7 @@ export function App(): JSX.Element {
               connected: true,
               submitted: false,
             },
-          ],
+          ].sort((left, right) => left.seat - right.seat),
         };
         setLocalRoom(next);
         setRoom(next);
@@ -362,6 +378,23 @@ export function App(): JSX.Element {
     if (!room || isRemoteRoom(room)) return;
     setRoom(fillLocalBotSeats(room));
   }, [room]);
+
+  const onRemovePlayer = useCallback(
+    async (playerId: string) => {
+      if (!room) return;
+      setError('');
+      try {
+        if (!isRoomHost(room, identity)) throw new Error('Only the host can remove players.');
+        const next = isRemoteRoom(room)
+          ? await removeRemotePlayer(room.id, playerId)
+          : removeLocalPlayer(room, playerId);
+        setRoom(next);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Could not remove that player.');
+      }
+    },
+    [identity, room],
+  );
 
   const onAction = useCallback(
     async (action: GameAction) => {
@@ -417,10 +450,9 @@ export function App(): JSX.Element {
       onStart={onStart}
       onAddBotSeat={onAddBotSeat}
       onFillAiSeats={onFillAiSeats}
+      onRemovePlayer={onRemovePlayer}
       onAction={onAction}
-      isHost={
-        room.hostPlayerId === identity || (!isRemoteRoom(room) && room.players[0]?.id === identity)
-      }
+      isHost={isRoomHost(room, identity)}
       onCopyInvite={() => void navigator.clipboard?.writeText(inviteLink(room.code))}
       onLeave={leaveRoom}
     />
@@ -589,6 +621,7 @@ function RoomScreen({
   onStart,
   onAddBotSeat,
   onFillAiSeats,
+  onRemovePlayer,
   onAction,
   isHost,
   onCopyInvite,
@@ -603,6 +636,7 @@ function RoomScreen({
   onStart: () => Promise<void>;
   onAddBotSeat: () => void;
   onFillAiSeats: () => void;
+  onRemovePlayer: (playerId: string) => Promise<void>;
   onAction: (action: GameAction) => Promise<void>;
   isHost: boolean;
   onCopyInvite: () => void;
@@ -642,6 +676,7 @@ function RoomScreen({
           onStart={onStart}
           onAddBotSeat={onAddBotSeat}
           onFillAiSeats={onFillAiSeats}
+          onRemovePlayer={onRemovePlayer}
           onLeave={onLeave}
         />
       ) : game ? (
@@ -667,6 +702,7 @@ function LobbyView({
   onStart,
   onAddBotSeat,
   onFillAiSeats,
+  onRemovePlayer,
   onLeave,
 }: {
   room: ActiveRoom;
@@ -675,6 +711,7 @@ function LobbyView({
   onStart: () => Promise<void>;
   onAddBotSeat: () => void;
   onFillAiSeats: () => void;
+  onRemovePlayer: (playerId: string) => Promise<void>;
   onLeave: () => Promise<void>;
 }): JSX.Element {
   return (
@@ -710,6 +747,16 @@ function LobbyView({
                         : 'RECONNECTING'
                   : 'WAITING FOR RACER'}
               </div>
+              {player && isHost && player.id !== room.hostPlayerId && (
+                <button
+                  type="button"
+                  className="tiny-button seat-remove-button"
+                  aria-label={`Remove ${player.nickname}`}
+                  onClick={() => void onRemovePlayer(player.id)}
+                >
+                  REMOVE
+                </button>
+              )}
             </div>
           );
         })}

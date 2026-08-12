@@ -30,6 +30,13 @@ export function makeRoomCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
+export function nextOpenSeat(players: readonly RoomPlayer[]): number | null {
+  for (let seat = 0; seat < MAX_PLAYERS; seat += 1) {
+    if (!players.some((player) => player.seat === seat)) return seat;
+  }
+  return null;
+}
+
 export function createLocalRoom(
   nickname: string,
   playerId: string,
@@ -57,8 +64,8 @@ export function createLocalRoom(
 }
 
 export function addLocalBotSeat(room: LocalRoom): LocalRoom {
-  if (room.players.length >= MAX_PLAYERS) return room;
-  const seat = room.players.length;
+  const seat = nextOpenSeat(room.players);
+  if (seat === null) return room;
   const usedColors = new Set(room.players.map((player) => player.color));
   const color =
     PLAYER_COLORS.find((candidate) => !usedColors.has(candidate)) ?? PLAYER_COLORS[seat];
@@ -76,8 +83,19 @@ export function addLocalBotSeat(room: LocalRoom): LocalRoom {
         submitted: false,
         isBot: true,
       },
-    ],
+    ].sort((left, right) => left.seat - right.seat),
   };
+  setLocalRoom(next);
+  return next;
+}
+
+export function removeLocalPlayer(room: LocalRoom, playerId: string): LocalRoom {
+  if (room.status !== 'LOBBY')
+    throw new Error('Players can only be removed before the race starts.');
+  if (playerId === room.hostPlayerId) throw new Error('The host cannot be removed from the room.');
+  if (!room.players.some((player) => player.id === playerId))
+    throw new Error('That player is no longer in the room.');
+  const next = { ...room, players: room.players.filter((player) => player.id !== playerId) };
   setLocalRoom(next);
   return next;
 }

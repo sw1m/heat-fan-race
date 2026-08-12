@@ -16,6 +16,7 @@ export interface RoomPlayer {
   seat: number;
   color: string;
   isHost: boolean;
+  isMe?: boolean;
   connected: boolean;
   submitted: boolean;
   position?: { space: number; lane: 0 | 1 };
@@ -125,6 +126,13 @@ export async function leaveRemoteRoom(roomId: string): Promise<void> {
   if (!supabase) throw new Error('Realtime backend is not configured.');
   const { error } = await supabase.rpc('leave_room', { p_room_id: roomId });
   if (error) throw new Error(error.message);
+}
+
+export async function removeRemotePlayer(roomId: string, playerId: string): Promise<RemoteRoom> {
+  return callRpc('remove_lobby_player', {
+    p_room_id: roomId,
+    p_room_player_id: playerId,
+  });
 }
 
 export function subscribeToRoom(roomId: string, onChange: () => void): () => void {

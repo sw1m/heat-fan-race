@@ -12,6 +12,10 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   );
   await page.getByRole('button', { name: 'CREATE RACE' }).click();
   await expect(page.getByText('Choose your seat.')).toBeVisible();
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await expect(page.getByText('Bot 2')).toBeVisible();
+  await page.getByRole('button', { name: 'Remove Bot 2' }).click();
+  await expect(page.getByText('Bot 2')).toHaveCount(0);
   await page.getByRole('button', { name: 'FILL OPEN SLOTS WITH AI' }).click();
   await expect(page.getByText('Bot 2')).toBeVisible();
   await expect(page.getByText('Bot 6')).toBeVisible();

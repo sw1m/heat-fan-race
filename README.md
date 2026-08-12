@@ -49,7 +49,7 @@ Push to `main`. The workflow in `.github/workflows/pages.yml` builds and deploys
 
 ## Friends joining
 
-The host visits the public URL, enters a temporary nickname, and creates a race. The host shares the six-character code or the Copy Invite Link URL. Friends enter nicknames and the code. Anonymous authentication is performed behind the scenes; no account form is shown. The reconnect token is held in browser storage and is used when the same browser refreshes.
+The host visits the public URL, enters a temporary nickname, and creates a race. The host shares the six-character code or the Copy Invite Link URL. Friends enter nicknames and the code. Before starting, the host can remove a guest from any occupied lobby seat; that seat becomes available again. Anonymous authentication is performed behind the scenes; no account form is shown. The reconnect token is held in browser storage and is used when the same browser refreshes.
 
 ## Architecture
 

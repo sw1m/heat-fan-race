@@ -452,6 +452,13 @@ h2 {
   letter-spacing: 0.12em;
   margin-top: 7px;
 }
+.seat-remove-button {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  padding: 6px 8px;
+  font-size: 8px;
+}
 .lobby-actions {
   display: flex;
   justify-content: space-between;
