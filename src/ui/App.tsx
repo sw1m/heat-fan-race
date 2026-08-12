@@ -5,12 +5,13 @@ import {
   PLAYER_COLORS,
   STARTER_DECK_EXTRA_HEAT_CARDS,
   USA_ENGINE_HEAT,
+  USA_TRACK_VISUAL,
   type PlayerColor,
 } from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState, isOptionalDiscardCard } from '../engine/engine';
 import { summarizeHeat, type HeatSummary } from '../engine/heat';
-import { distanceToNextCorner, nextCorner } from '../engine/track';
+import { distanceToNextCorner, nextCorner, visualTrackPosition } from '../engine/track';
 import type { Card, GameAction, GameState } from '../engine/types';
 import carMarkerAsset from '../assets/heat-race-car.png';
 import {
@@ -1559,7 +1560,130 @@ function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
   );
 }
 
+function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
+  const track = { ...game.track, visual: game.track.visual ?? USA_TRACK_VISUAL };
+  const startingSpace = Math.min(0, ...game.track.grid.map((position) => position.space));
+  const furthestVisibleSpace = Math.max(
+    game.track.finishSpace + game.players.length,
+    ...game.players.map((player) => player.position.space),
+  );
+  const trackSpaces = Array.from(
+    { length: furthestVisibleSpace - startingSpace + 1 },
+    (_, index) => startingSpace + index,
+  );
+  const pathPoints = track.visual.centerline.map((point) => `${point.x},${point.y}`).join(' ');
+  const finishPoint = visualTrackPosition(track, game.track.finishSpace - 0.5, 0);
+
+  return (
+    <section className="track-panel panel">
+      <TurnOrderGraphic game={game} />
+      <div className="track-head">
+        <div>
+          <div className="panel-title">
+            <span>USA STARTER CIRCUIT</span>
+            <span className="muted">TWO LANES · MAX TWO CARS PER SPACE</span>
+          </div>
+          <div className="track-legend">
+            <span>🏁 FINISH LINE AFTER S{game.track.finishSpace}</span>
+            {game.track.corners.map((corner) => (
+              <span key={corner.id}>
+                ◼ {corner.label} <strong>{corner.speedLimit}</strong>
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="corner-next">
+          {game.track.corners.find(
+            (corner) =>
+              corner.lineSpace >
+              (game.players.find((player) => !player.finished)?.position.space ?? 0),
+          )
+            ? `NEXT LIMIT ${game.track.corners.find((corner) => corner.lineSpace > (game.players.find((player) => !player.finished)?.position.space ?? 0))?.speedLimit}`
+            : 'FINAL STRAIGHT'}
+        </div>
+      </div>
+      <div className="track-scroll">
+        <div className="track-map" aria-label="Simplified USA two-lane track map">
+          <svg className="track-course-art" viewBox="0 0 100 100" aria-hidden="true">
+            <polyline className="track-shoulder" points={pathPoints} />
+            <polyline className="track-road" points={pathPoints} />
+            <polyline className="track-center-dash" points={pathPoints} />
+          </svg>
+          {trackSpaces.map((space) =>
+            [0, 1].map((lane) => {
+              const point = visualTrackPosition(track, space, lane as 0 | 1);
+              if (!point) return null;
+              const lanePlayers = game.players.filter(
+                (player) => player.position.space === space && player.position.lane === lane,
+              );
+              const isFinish = space === game.track.finishSpace;
+              return (
+                <div
+                  className={`track-map-space ${space < 0 ? 'starting-space' : ''} ${isFinish ? 'finish-space' : ''} ${space > game.track.finishSpace ? 'post-finish-space' : ''}`}
+                  key={`${space}-${lane}`}
+                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                  title={`Space ${space}, ${lane === 0 ? 'race line' : 'outside lane'}`}
+                >
+                  {lanePlayers.map((player) => (
+                    <span className="car-marker-wrap" title={player.name} key={player.id}>
+                      <span className="car-distance">
+                        {player.finished
+                          ? `FINISH S${player.position.space}`
+                          : player.position.space === game.track.finishSpace
+                            ? 'ON FINISH MARKER'
+                            : distanceToNextCorner(game.track, player.position.space) !== null
+                              ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
+                              : `TO FINISH ${game.track.finishSpace - player.position.space}`}
+                      </span>
+                      <CarToken color={player.color} className="car-marker" />
+                    </span>
+                  ))}
+                  <small>
+                    {space < 0
+                      ? 'GRID'
+                      : space > game.track.finishSpace || space % 5 === 0
+                        ? space
+                        : ''}
+                  </small>
+                </div>
+              );
+            }),
+          )}
+          {game.track.corners.map((corner) => {
+            const point = visualTrackPosition(track, corner.lineSpace - 0.5, 0);
+            if (!point) return null;
+            return (
+              <div
+                className="track-corner-marker"
+                key={corner.id}
+                style={{ left: `${point.x}%`, top: `${point.y - 3}%` }}
+                title={`${corner.label}: speed limit ${corner.speedLimit}`}
+              >
+                <span>{corner.label.replace('Turn ', 'T')}</span>
+                <strong>{corner.speedLimit}</strong>
+              </div>
+            );
+          })}
+          {finishPoint && (
+            <div
+              className="track-finish-marker"
+              style={{ left: `${finishPoint.x}%`, top: `${finishPoint.y}%` }}
+            >
+              <span>🏁</span>
+              <strong>FINISH</strong>
+            </div>
+          )}
+          <span className="track-lane-key race-line-key">RACE LINE</span>
+          <span className="track-lane-key outside-key">OUTSIDE</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function TrackBoard({ game }: { game: GameState }): JSX.Element {
+  return <TrackMapBoard game={game} />;
+  /*
   const positions = new Map(
     game.players.map((player) => [`${player.position.space}-${player.position.lane}`, player]),
   );
@@ -1649,4 +1773,5 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
       </div>
     </section>
   );
+  */
 }

@@ -25,6 +25,18 @@ export interface TrackCorner {
   label: string;
 }
 
+export interface TrackVisualPoint {
+  x: number;
+  y: number;
+}
+
+export interface TrackVisualConfig {
+  /** Normalized 0–100 points for the simplified course centerline. */
+  centerline: TrackVisualPoint[];
+  /** Distance between the two lane centerlines in the same normalized viewBox. */
+  laneGap: number;
+}
+
 export interface TrackConfig {
   id: string;
   name: string;
@@ -34,6 +46,8 @@ export interface TrackConfig {
   engineHeatCapacity?: number;
   corners: TrackCorner[];
   grid: Array<{ space: number; lane: Lane }>;
+  /** Optional image-free, data-driven presentation geometry. */
+  visual?: TrackVisualConfig;
 }
 
 export interface CarPosition {

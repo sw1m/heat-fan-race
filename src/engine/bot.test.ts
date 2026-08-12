@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { advanceBotTurns, chooseBotPlan, chooseBotReaction } from './bot';
+import { USA_BEGINNER_TRACK } from './constants';
 import { applyGameAction, createInitialGame } from './engine';
 import type { GameState } from './types';
 
@@ -114,7 +115,10 @@ describe('rules-following bot', () => {
     const state = createInitialGame([human, bot], fixedRandom);
     const botPlayer = state.players.find((player) => player.id === bot.id)!;
     botPlayer.gear = 2;
-    botPlayer.position = { space: 4, lane: 0 };
+    botPlayer.position = {
+      space: USA_BEGINNER_TRACK.corners[0].lineSpace - 4,
+      lane: 0,
+    };
     botPlayer.engine = botPlayer.engine.slice(0, 4);
     botPlayer.hand = [
       { id: 'early-four-a', kind: 'BASIC', value: 4 },
@@ -137,7 +141,7 @@ describe('rules-following bot', () => {
     const state = createInitialGame([human, bot], fixedRandom);
     const botPlayer = state.players.find((player) => player.id === bot.id)!;
     botPlayer.gear = 2;
-    botPlayer.position = { space: 38, lane: 0 };
+    botPlayer.position = { space: USA_BEGINNER_TRACK.finishSpace - 5, lane: 0 };
     botPlayer.engine = botPlayer.engine.slice(0, 1);
     botPlayer.hand = [
       { id: 'finish-one', kind: 'BASIC', value: 1 },
@@ -201,15 +205,15 @@ describe('rules-following bot', () => {
   it('declines a boost that would turn a payable corner into a spinout', () => {
     const state = reactionState(['BOOST', 'PASS_REACTION']);
     const botPlayer = state.players.find((player) => player.id === bot.id)!;
-    botPlayer.position = { space: 11, lane: 0 };
+    botPlayer.position = { space: USA_BEGINNER_TRACK.corners[1].lineSpace, lane: 0 };
     botPlayer.gear = 3;
     botPlayer.engine = botPlayer.engine.slice(0, 3);
     botPlayer.hand = [];
     botPlayer.deck = [{ id: 'boost-four', kind: 'BASIC', value: 4 }];
     state.pending!.speed = 5;
-    state.pending!.startSpace = 8;
-    state.pending!.movedSpace = 11;
-    state.pending!.crossedCornerIds = ['corner-1'];
+    state.pending!.startSpace = USA_BEGINNER_TRACK.corners[1].lineSpace - 3;
+    state.pending!.movedSpace = USA_BEGINNER_TRACK.corners[1].lineSpace;
+    state.pending!.crossedCornerIds = ['corner-2'];
     expect(chooseBotReaction(state, bot.id)).toEqual({
       type: 'PASS_REACTION',
       playerId: bot.id,
@@ -219,14 +223,14 @@ describe('rules-following bot', () => {
   it('uses Heat for extra finish-line distance when the finish is within reach', () => {
     const state = reactionState(['BOOST', 'PASS_REACTION']);
     const botPlayer = state.players.find((player) => player.id === bot.id)!;
-    botPlayer.position = { space: 39, lane: 0 };
+    botPlayer.position = { space: USA_BEGINNER_TRACK.finishSpace - 1, lane: 0 };
     botPlayer.gear = 3;
     botPlayer.engine = botPlayer.engine.slice(0, 2);
     botPlayer.hand = [];
     botPlayer.deck = [{ id: 'finish-boost-four', kind: 'BASIC', value: 4 }];
     state.pending!.speed = 1;
-    state.pending!.startSpace = 39;
-    state.pending!.movedSpace = 40;
+    state.pending!.startSpace = USA_BEGINNER_TRACK.finishSpace - 1;
+    state.pending!.movedSpace = USA_BEGINNER_TRACK.finishSpace;
 
     expect(chooseBotReaction(state, bot.id)).toEqual({
       type: 'BOOST',

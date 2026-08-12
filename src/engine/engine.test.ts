@@ -11,6 +11,7 @@ import {
   isAdjacentOrBehind,
   nextCorner,
   positionSort,
+  visualTrackPosition,
 } from './track';
 import type { Card, GameState, PlayerState } from './types';
 
@@ -178,9 +179,23 @@ describe('planning, shifting, and turn order', () => {
 describe('track display helpers', () => {
   it('finds the next corner and its remaining distance', () => {
     expect(nextCorner(USA_BEGINNER_TRACK, 4)?.id).toBe('corner-1');
-    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 4)).toBe(5);
-    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 9)).toBe(0);
-    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 36)).toBeNull();
+    expect(distanceToNextCorner(USA_BEGINNER_TRACK, 4)).toBe(
+      USA_BEGINNER_TRACK.corners[0].lineSpace - 1 - 4,
+    );
+    expect(
+      distanceToNextCorner(USA_BEGINNER_TRACK, USA_BEGINNER_TRACK.corners[0].lineSpace - 1),
+    ).toBe(0);
+    expect(
+      distanceToNextCorner(USA_BEGINNER_TRACK, USA_BEGINNER_TRACK.corners.at(-1)?.lineSpace ?? 0),
+    ).toBeNull();
+  });
+
+  it('resolves both lanes along the image-calibrated course geometry', () => {
+    const inside = visualTrackPosition(USA_BEGINNER_TRACK, 20, 0);
+    const outside = visualTrackPosition(USA_BEGINNER_TRACK, 20, 1);
+    expect(inside).not.toBeNull();
+    expect(outside).not.toBeNull();
+    expect(inside?.x === outside?.x && inside?.y === outside?.y).toBe(false);
   });
 });
 
@@ -204,11 +219,13 @@ describe('track rules', () => {
   });
 
   it('finds multiple corners in order and limits spaces to two cars', () => {
-    expect(crossedCorners(USA_BEGINNER_TRACK, 8, 31).map((corner) => corner.id)).toEqual([
-      'corner-1',
-      'corner-2',
-      'corner-3',
-    ]);
+    expect(
+      crossedCorners(
+        USA_BEGINNER_TRACK,
+        USA_BEGINNER_TRACK.corners[0].lineSpace - 1,
+        USA_BEGINNER_TRACK.corners[2].lineSpace + 1,
+      ).map((corner) => corner.id),
+    ).toEqual(['corner-1', 'corner-2', 'corner-3']);
     const board = [car('p1', 5, 0), car('p2', 5, 1)];
     expect(
       chooseLandingPosition(board, { space: 1, lane: 0 }, 4, USA_BEGINNER_TRACK, 'p3'),
@@ -272,7 +289,10 @@ describe('track rules', () => {
   it('keeps four simultaneous spinouts within two cars per space', () => {
     let state = createInitialGame(players, fixedRandom);
     state.players.forEach((player, index) => {
-      player.position = { space: 7, lane: (index % 2) as 0 | 1 };
+      player.position = {
+        space: USA_BEGINNER_TRACK.corners[1].lineSpace - 5,
+        lane: (index % 2) as 0 | 1,
+      };
       player.engine = [];
       player.hand = [{ id: `${player.id}-speed-five`, kind: 'STARTING_FIVE', value: 5 }];
     });
@@ -295,7 +315,10 @@ describe('track rules', () => {
     });
     expect(Math.max(...occupancy.values())).toBeLessThanOrEqual(2);
     expect(state.players.map((player) => player.position.space).sort((a, b) => a - b)).toEqual([
-      8, 8, 9, 9,
+      USA_BEGINNER_TRACK.corners[1].lineSpace - 2,
+      USA_BEGINNER_TRACK.corners[1].lineSpace - 2,
+      USA_BEGINNER_TRACK.corners[1].lineSpace - 1,
+      USA_BEGINNER_TRACK.corners[1].lineSpace - 1,
     ]);
   });
 
@@ -574,7 +597,10 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
   it('updates the recorded finish space after a post-crossing Boost', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
-    state.players[0].position = { space: 36, lane: 0 };
+    state.players[0].position = {
+      space: USA_BEGINNER_TRACK.finishSpace - 8,
+      lane: 0,
+    };
     state.players[1].position = { space: -1, lane: 0 };
     state.players[0].gear = 2;
     state.players[0].engine = state.players[0].engine.slice(0, 1);
@@ -600,14 +626,18 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
       { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['finish-boost-other'] },
       fixedRandom,
     );
-    expect(state.players[0].position.space).toBe(45);
-    expect(state.players[0].finishProgress).toBe(45);
+    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace + 1);
+    expect(state.players[0].finishProgress).toBe(USA_BEGINNER_TRACK.finishSpace + 1);
 
     state = applyGameAction(state, { type: 'BOOST', playerId: 'p1' }, fixedRandom);
 
-    expect(state.players[0].position.space).toBe(47);
-    expect(state.players[0].finishProgress).toBe(47);
-    expect(state.log.some((entry) => entry.text.includes('moves to space 47'))).toBe(true);
+    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace + 3);
+    expect(state.players[0].finishProgress).toBe(USA_BEGINNER_TRACK.finishSpace + 3);
+    expect(
+      state.log.some((entry) =>
+        entry.text.includes(`moves to space ${USA_BEGINNER_TRACK.finishSpace + 3}`),
+      ),
+    ).toBe(true);
   });
 
   it('allows Adrenaline Cooldown to enable Boost in the same reaction window', () => {
@@ -651,9 +681,9 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
   it('pays a corner overage and spins out when the engine cannot pay', () => {
     let paying = createInitialGame(players.slice(0, 2), fixedRandom);
-    paying.players[0].position = { space: 9, lane: 0 };
+    paying.players[0].position = { space: USA_BEGINNER_TRACK.corners[1].lineSpace - 1, lane: 0 };
     paying.players[1].position = { space: -1, lane: 0 };
-    paying.players[0].hand = [{ id: 'five', kind: 'STARTING_FIVE', value: 5 }];
+    paying.players[0].hand = [{ id: 'five', kind: 'BASIC', value: 4 }];
     paying.players[1].hand = [paying.players[1].hand.find((card) => card.kind === 'BASIC')!];
     paying = applyGameAction(
       paying,
@@ -669,7 +699,10 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(paying.players[0].engine).toHaveLength(5);
 
     let spinning = createInitialGame(players.slice(0, 2), fixedRandom);
-    spinning.players[0].position = { space: 9, lane: 0 };
+    spinning.players[0].position = {
+      space: USA_BEGINNER_TRACK.corners[1].lineSpace - 1,
+      lane: 0,
+    };
     spinning.players[0].gear = 3;
     spinning.players[0].engine = [];
     spinning.players[1].position = { space: -1, lane: 0 };
@@ -691,7 +724,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     );
     spinning = pass(spinning, 'p1');
     expect(spinning.players[0].gear).toBe(1);
-    expect(spinning.players[0].position.space).toBe(9);
+    expect(spinning.players[0].position.space).toBe(USA_BEGINNER_TRACK.corners[1].lineSpace - 1);
     expect(spinning.players[0].hand.filter((card) => card.kind === 'STRESS')).toHaveLength(2);
   });
 
@@ -809,7 +842,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
   it('does not finish a car that lands on the painted finish space', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
-    state.players[0].position = { space: 39, lane: 0 };
+    state.players[0].position = { space: USA_BEGINNER_TRACK.finishSpace - 1, lane: 0 };
     state.players[1].position = { space: -1, lane: 0 };
     state.players[0].hand = [{ id: 'finish-one', kind: 'BASIC', value: 1 }];
     state.players[1].hand = [{ id: 'other-one', kind: 'BASIC', value: 1 }];
@@ -833,7 +866,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
   it('marks a car finished only after it lands beyond the painted finish space', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
-    state.players[0].position = { space: 39, lane: 0 };
+    state.players[0].position = { space: USA_BEGINNER_TRACK.finishSpace - 1, lane: 0 };
     state.players[1].position = { space: -1, lane: 0 };
     state.players[0].hand = [{ id: 'finish-two', kind: 'BASIC', value: 2 }];
     state.players[1].hand = [{ id: 'other-one', kind: 'BASIC', value: 1 }];
@@ -854,7 +887,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.players[0].finished).toBe(true);
     expect(state.players[0].finishRank).toBe(1);
     expect(state.players[0].finishRound).toBe(1);
-    expect(state.players[0].position.space).toBe(41);
+    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace + 1);
     expect(state.winnerId).toBe('p1');
     expect(state.phase).toBe('PLANNING');
   });
@@ -880,8 +913,8 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
   it('ranks same-round finishers by distance beyond the line before lane ties', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
-    state.players[0].position = { space: 39, lane: 1 };
-    state.players[1].position = { space: 39, lane: 0 };
+    state.players[0].position = { space: USA_BEGINNER_TRACK.finishSpace - 1, lane: 1 };
+    state.players[1].position = { space: USA_BEGINNER_TRACK.finishSpace - 1, lane: 0 };
     state.adrenalineEligibleIds = ['p1'];
     state.players[0].hand = [{ id: 'finish-four', kind: 'BASIC', value: 4 }];
     state.players[1].hand = [{ id: 'finish-one', kind: 'BASIC', value: 1 }];
@@ -899,11 +932,11 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     state = pass(state, 'p1');
     state = pass(state, 'p1');
     expect(state.phase).toBe('PLANNING');
-    expect(state.players[0].finishProgress).toBe(43);
+    expect(state.players[0].finishProgress).toBe(USA_BEGINNER_TRACK.finishSpace + 3);
     expect(state.players[0].finishRound).toBe(1);
     expect(state.players[1].finishProgress).toBeNull();
-    expect(state.players[0].position.space).toBe(43);
-    expect(state.players[1].position.space).toBe(40);
+    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace + 3);
+    expect(state.players[1].position.space).toBe(USA_BEGINNER_TRACK.finishSpace);
     expect(state.players[0].finishRank).toBe(1);
     expect(state.players[1].finishRank).toBeNull();
     expect(state.winnerId).toBe('p1');

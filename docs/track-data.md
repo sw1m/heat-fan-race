@@ -1,15 +1,37 @@
 # USA starter track data
 
-The official basic rules identify the USA track as the recommended first track and recommend one lap for a learning race. The official board’s exact space-by-space lane geometry is visual board data, not available in machine-readable text on the linked page. This repository therefore does **not** claim the following values are an exact transcription of the physical USA board.
+The supplied board photograph is now used as the visual reference for the V1
+USA course. The renderer draws a simplified CSS/SVG course centerline; it does
+not include, trace, or ship the board photograph or any official artwork.
 
-The V1 functional starter circuit in `src/engine/constants.ts` uses 40 numbered spaces, two lanes, a six-space starting grid, four data-driven corners, and six course-provided engine Heat slots:
+The basic rules identify USA as the recommended first track. V1 keeps the
+learning-race configuration at one lap. The course data now uses the physical
+board's 69 numbered spaces and the four visible corner limits:
 
-| Marker                | Space | Limit |
-| --------------------- | ----: | ----: |
-| Turn 1                |    10 |     4 |
-| Turn 2                |    20 |     3 |
-| Turn 3                |    29 |     5 |
-| Turn 4                |    36 |     4 |
-| Painted finish marker |    40 |     — |
+| Marker                | Space line | Speed limit |
+| --------------------- | ---------: | ----------: |
+| Turn 1                |          6 |           7 |
+| Turn 2                |         20 |           3 |
+| Turn 3                |         26 |           3 |
+| Turn 4                |         52 |           2 |
+| Painted finish marker |         69 |           — |
 
-These values are a short, playable approximation selected to exercise straightaways, multiple corners, blocked spaces, and a final sprint without importing or tracing official board art. Space 40 is the painted finish marker; the engine treats spaces 41 and beyond as the first finish-line-crossing spaces so cars can remain visibly separated after the line. Before an exact-fidelity release, compare this configuration to an owned physical USA board or an authorized machine-readable track reference and update the configuration plus its tests. No other track should be added until this data is verified.
+The corner line is the boundary between the space immediately before the
+corner and the speed-limit space. The engine therefore checks a corner when a
+move crosses `lineSpace`; the UI places its marker at `lineSpace - 0.5` so the
+marker is visually between landing spaces. A car finishes only after landing
+beyond the painted finish marker, so post-finish spaces remain visible for
+same-turn distance tie breaks.
+
+The `visual.centerline` in `src/engine/constants.ts` is a hand-calibrated,
+image-free approximation of the photograph's layout: the lower straight,
+right-hand sweep, upper bend, and tight left return are represented as a
+two-lane route. The supplied photograph does not expose enough resolution to
+prove every numbered lane cell, exact grid offset, or the exact pixel position
+of each corner line. Those values remain explicitly calibrated data rather
+than a claim of official board transcription. Verify them against an owned
+physical board or an authorized machine-readable track reference before
+calling this exact-fidelity data.
+
+The six course Heat slots are separate from the seven Heat cards in the
+starter deck. See `docs/rules-implementation.md` for the Heat accounting.

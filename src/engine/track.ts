@@ -1,4 +1,62 @@
-import type { CarPosition, Lane, PlayerState, TrackConfig } from './types';
+import type { CarPosition, Lane, PlayerState, TrackConfig, TrackVisualPoint } from './types';
+
+export interface VisualTrackPosition extends TrackVisualPoint {
+  angle: number;
+}
+
+function distanceBetween(a: TrackVisualPoint, b: TrackVisualPoint): number {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+/** Resolve a numbered space to a lane centerline position for the track map. */
+export function visualTrackPosition(
+  track: TrackConfig,
+  space: number,
+  lane: Lane,
+): VisualTrackPosition | null {
+  const visual = track.visual;
+  if (!visual || visual.centerline.length < 2 || track.finishSpace <= 0) return null;
+
+  const lengths = visual.centerline
+    .slice(1)
+    .map((point, index) => distanceBetween(visual.centerline[index], point));
+  const totalLength = lengths.reduce((sum, length) => sum + length, 0);
+  const target = (space / track.finishSpace) * totalLength;
+
+  let segmentIndex = 0;
+  let segmentStartDistance = 0;
+  if (target <= 0) {
+    segmentIndex = 0;
+  } else if (target >= totalLength) {
+    segmentIndex = lengths.length - 1;
+    segmentStartDistance = totalLength - lengths[segmentIndex];
+  } else {
+    for (let index = 0; index < lengths.length; index += 1) {
+      if (segmentStartDistance + lengths[index] >= target) {
+        segmentIndex = index;
+        break;
+      }
+      segmentStartDistance += lengths[index];
+    }
+  }
+
+  const start = visual.centerline[segmentIndex];
+  const end = visual.centerline[segmentIndex + 1];
+  const segmentLength = lengths[segmentIndex] || 1;
+  const ratio = (target - segmentStartDistance) / segmentLength;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const normalX = -dy / segmentLength;
+  const normalY = dx / segmentLength;
+  const laneOffset = (lane === 0 ? -1 : 1) * visual.laneGap * 0.5;
+
+  return {
+    x: start.x + dx * ratio + normalX * laneOffset,
+    y: start.y + dy * ratio + normalY * laneOffset,
+    angle,
+  };
+}
 
 export function occupantsAt(
   players: readonly PlayerState[],
