@@ -32,6 +32,20 @@ const blockerB = {
   color: '#2f7a54',
   controller: 'BOT' as const,
 };
+const botE = {
+  id: 'bot-e',
+  name: 'Bot 5',
+  seat: 4,
+  color: '#7b4d9e',
+  controller: 'BOT' as const,
+};
+const botF = {
+  id: 'bot-f',
+  name: 'Bot 6',
+  seat: 5,
+  color: '#2b9db2',
+  controller: 'BOT' as const,
+};
 
 function humanCard(state: GameState): string {
   return state.players
@@ -40,6 +54,31 @@ function humanCard(state: GameState): string {
 }
 
 describe('rules-following bot', () => {
+  it.each(Array.from({ length: 24 }, (_, seed) => seed + 1))(
+    'locks all five bots after a fresh six-seat human plan (seed %i)',
+    (seed) => {
+      let value = seed;
+      const random = () => {
+        value = (value * 1664525 + 1013904223) % 4294967296;
+        return value / 4294967296;
+      };
+      const state = createInitialGame([human, bot, blockerA, blockerB, botE, botF], random);
+      const afterHuman = applyGameAction(
+        state,
+        { type: 'SUBMIT_PLAN', playerId: human.id, gear: 1, cardIds: [humanCard(state)] },
+        random,
+      );
+
+      const next = advanceBotTurns(afterHuman, random);
+
+      expect(next.phase).toBe('PLAYER_REACTION');
+      expect(next.activePlayerId).toBe(human.id);
+      for (const player of next.players.filter((candidate) => candidate.controller === 'BOT')) {
+        expect(next.submitted[player.id]).toBeDefined();
+      }
+    },
+  );
+
   function reactionState(options: string[]): GameState {
     const state = createInitialGame([human, bot], fixedRandom);
     state.phase = 'PLAYER_REACTION';

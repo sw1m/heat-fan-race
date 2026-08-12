@@ -418,7 +418,11 @@ export function App(): JSX.Element {
         if (isRemoteRoom(room)) {
           setRoom(await sendRemoteAction(room.id, action));
         } else if (room.game) {
-          const game = applyGameAction(room.game, action);
+          // Advance local AI in the same state transition as the human action.
+          // The reconciliation effect below still covers refreshes, but the
+          // first turn after NEW RACE must not depend on a second React render
+          // for the bots to lock and resolve.
+          const game = advanceBotTurns(applyGameAction(room.game, action));
           const next: LocalRoom = {
             ...room,
             game,

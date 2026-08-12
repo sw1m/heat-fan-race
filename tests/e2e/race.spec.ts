@@ -79,7 +79,7 @@ test('can submit the first plan after starting a new local race from results', a
   await page.goto('/');
   await page.getByLabel('Nickname').fill('Restart Tester');
   await page.getByRole('button', { name: 'CREATE RACE' }).click();
-  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await page.getByRole('button', { name: 'FILL OPEN SLOTS WITH AI' }).click();
   await page.getByRole('button', { name: 'START RACE' }).click();
   await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
 
@@ -105,6 +105,8 @@ test('can submit the first plan after starting a new local race from results', a
   });
   await page.reload();
   await expect(page.getByText('CHECKERED FLAG')).toBeVisible();
+  await page.getByRole('button', { name: 'REVIEW RACE' }).click();
+  await expect(page.getByText('RACE REVIEW')).toBeVisible();
   await page.getByRole('button', { name: 'NEW RACE' }).click();
   await expect(page.getByText('ROUND 1')).toBeVisible();
 
@@ -113,6 +115,13 @@ test('can submit the first plan after starting a new local race from results', a
   await expect(lockButton).toBeEnabled();
   await lockButton.click();
   await expect(page.getByText('PLAYER REACTION', { exact: true })).toBeVisible();
+  await expect(page.locator('.stand-row').filter({ hasText: /Bot/ })).toHaveCount(5);
+  await expect(page.locator('.stand-row').filter({ hasText: /Bot/ }).first()).toContainText(
+    /G[1-4]/,
+  );
+  await expect(page.getByRole('button', { name: 'KEEP HAND + END TURN' })).toBeVisible();
+  await page.getByRole('button', { name: 'KEEP HAND + END TURN' }).click();
+  await expect(page.getByText('ROUND 2', { exact: true })).toBeVisible();
 });
 
 test('two browser contexts can create, join, start, and observe a synchronized room when Supabase is configured', async ({
