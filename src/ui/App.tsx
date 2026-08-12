@@ -4,6 +4,7 @@ import {
   MIN_PLAYERS,
   PLAYER_COLORS,
   TOTAL_HEAT_CARDS,
+  USA_ENGINE_HEAT,
   type PlayerColor,
 } from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
@@ -87,6 +88,22 @@ function carMarkerFilter(color: string): string {
 function heatAvailableLabel(engineHeat: number | undefined): string {
   const count = Math.max(0, Math.min(TOTAL_HEAT_CARDS, Math.round(engineHeat ?? 0)));
   return `${count}/${TOTAL_HEAT_CARDS}`;
+}
+
+function cooldownUnavailableReason(
+  local: GameState['players'][number],
+  pending: GameState['pending'],
+): string | null {
+  if (!pending || pending.playerId !== local.id || pending.kind !== 'GEAR_REACTION') return null;
+  if (pending.cooldownAvailable <= 0 || pending.options.includes('COOLDOWN')) return null;
+  const hasHeatInHand = local.hand.some(
+    (card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT',
+  );
+  if (!hasHeatInHand) return 'Cooldown needs a Heat card in your hand.';
+  if (local.engine.length >= USA_ENGINE_HEAT) {
+    return `Cooldown is ready in gear ${local.gear}, but the engine is full (${USA_ENGINE_HEAT}/${USA_ENGINE_HEAT}). Spend Heat first.`;
+  }
+  return 'Cooldown is unavailable for this reaction.';
 }
 
 type RacePositionPlayer = Pick<
@@ -737,6 +754,7 @@ function RaceView({
   const selectable = game.phase === 'PLANNING' && !game.submitted?.[local.id];
   const discardMode = active && pending?.kind === 'GEAR_REACTION';
   const inviteText = pending?.playerId === local.id ? pending.options : [];
+  const cooldownNotice = cooldownUnavailableReason(local, pending);
   const handById = new Map(local.hand.map((card) => [card.id, card]));
   const displayHand =
     handSort === 'NUMERICAL'
@@ -1041,6 +1059,11 @@ function RaceView({
             >
               {pending?.kind === 'ADRENALINE' ? 'SKIP ADRENALINE' : 'KEEP HAND + END TURN'}
             </button>
+          </div>
+        )}
+        {pending?.playerId === local.id && cooldownNotice && (
+          <div className="reaction-note" role="status">
+            ❄ {cooldownNotice}
           </div>
         )}
       </section>
