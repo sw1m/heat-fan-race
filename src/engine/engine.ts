@@ -6,6 +6,7 @@ import {
   USA_ENGINE_HEAT,
 } from './constants';
 import { createBeginnerDeck, drawCards, replenishHand, shuffle } from './deck';
+import { isHeatCard } from './heat';
 import {
   crossedCorners,
   chooseLandingPosition,
@@ -44,10 +45,6 @@ function payHeat(player: PlayerState): boolean {
   if (!heat) return false;
   player.discard.push(heat);
   return true;
-}
-
-function isHeatCard(card: Card): boolean {
-  return card.kind === 'HEAT' || card.kind === 'STARTING_HEAT';
 }
 
 function courseHeatCapacity(state: GameState): number {
