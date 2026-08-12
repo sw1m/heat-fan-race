@@ -422,6 +422,36 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.pending?.options).not.toContain('COOLDOWN');
   });
 
+  it('uses the selected course capacity instead of a fixed USA capacity', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    const p1 = state.players[0];
+    state.track = { ...state.track, engineHeatCapacity: 5 };
+    p1.engine = p1.engine.slice(0, 4);
+    const speedCards = p1.hand
+      .filter(
+        (card) =>
+          card.kind === 'BASIC' || card.kind === 'STARTING_ZERO' || card.kind === 'STARTING_FIVE',
+      )
+      .slice(0, 2);
+    const heat = p1.hand.find((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT')!;
+    p1.hand = [...speedCards, heat];
+    state.players[1].hand = [state.players[1].hand.find((card) => card.kind === 'BASIC')!];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 2, cardIds: speedCards.map((card) => card.id) },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: [state.players[1].hand[0].id] },
+      fixedRandom,
+    );
+
+    expect(state.pending?.options).toContain('COOLDOWN');
+    state = applyGameAction(state, { type: 'COOLDOWN', playerId: 'p1' }, fixedRandom);
+    expect(state.players[0].engine).toHaveLength(5);
+  });
+
   it('treats the starting Heat card as Heat when a hand is cluttered', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     state.players[0].hand = [{ id: 'starter-heat', kind: 'STARTING_HEAT' }];
@@ -487,6 +517,84 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.pending?.speed).toBe(beforeBoostSpeed + 2);
     expect(state.players[0].played.some((card) => card.id === 'boost-basic')).toBe(true);
     expect(state.log.some((entry) => entry.text.includes('boosts'))).toBe(true);
+  });
+
+  it('keeps Boost available after using Adrenaline speed', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 3, lane: 0 };
+    state.players[1].position = { space: 0, lane: 0 };
+    state.players[1].gear = 3;
+    state.players[1].engine = state.players[1].engine.slice(0, 1);
+    state.players[0].hand = [{ id: 'front-one', kind: 'BASIC', value: 1 }];
+    state.players[1].hand = [
+      { id: 'adrenaline-one', kind: 'BASIC', value: 1 },
+      { id: 'adrenaline-two', kind: 'BASIC', value: 1 },
+      { id: 'adrenaline-three', kind: 'BASIC', value: 1 },
+    ];
+    state.players[1].deck = [{ id: 'adrenaline-boost', kind: 'BASIC', value: 2 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['front-one'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      {
+        type: 'SUBMIT_PLAN',
+        playerId: 'p2',
+        gear: 3,
+        cardIds: ['adrenaline-one', 'adrenaline-two', 'adrenaline-three'],
+      },
+      fixedRandom,
+    );
+    state = pass(state, 'p1');
+    expect(state.pending?.kind).toBe('ADRENALINE');
+
+    state = applyGameAction(state, { type: 'ADRENALINE_SPEED', playerId: 'p2' }, fixedRandom);
+    expect(state.pending?.kind).toBe('GEAR_REACTION');
+    expect(state.pending?.options).toContain('BOOST');
+    state = applyGameAction(state, { type: 'BOOST', playerId: 'p2' }, fixedRandom);
+    expect(state.players[1].engine).toHaveLength(0);
+    expect(state.players[1].played.map((card) => card.id)).toContain('adrenaline-boost');
+  });
+
+  it('allows Adrenaline Cooldown to enable Boost in the same reaction window', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 3, lane: 0 };
+    state.players[1].position = { space: 0, lane: 0 };
+    state.players[1].gear = 3;
+    state.players[1].engine = [];
+    state.players[0].hand = [{ id: 'front-cool-one', kind: 'BASIC', value: 1 }];
+    state.players[1].hand = [
+      { id: 'cooldown-one', kind: 'BASIC', value: 1 },
+      { id: 'cooldown-two', kind: 'BASIC', value: 1 },
+      { id: 'cooldown-three', kind: 'BASIC', value: 1 },
+      { id: 'cooldown-heat', kind: 'STARTING_HEAT' },
+    ];
+    state.players[1].deck = [{ id: 'cooldown-boost', kind: 'BASIC', value: 2 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['front-cool-one'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      {
+        type: 'SUBMIT_PLAN',
+        playerId: 'p2',
+        gear: 3,
+        cardIds: ['cooldown-one', 'cooldown-two', 'cooldown-three'],
+      },
+      fixedRandom,
+    );
+    state = pass(state, 'p1');
+    expect(state.pending?.options).toContain('ADRENALINE_COOLDOWN');
+
+    state = applyGameAction(state, { type: 'ADRENALINE_COOLDOWN', playerId: 'p2' }, fixedRandom);
+    expect(state.pending?.options).toContain('BOOST');
+    state = applyGameAction(state, { type: 'BOOST', playerId: 'p2' }, fixedRandom);
+    expect(state.players[1].engine).toHaveLength(0);
+    expect(state.players[1].played.map((card) => card.id)).toContain('cooldown-boost');
   });
 
   it('pays a corner overage and spins out when the engine cannot pay', () => {

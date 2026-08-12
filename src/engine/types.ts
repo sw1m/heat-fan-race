@@ -30,6 +30,8 @@ export interface TrackConfig {
   name: string;
   laps: number;
   finishSpace: number;
+  /** Engine slots supplied by the selected course; deck Heat is separate. */
+  engineHeatCapacity?: number;
   corners: TrackCorner[];
   grid: Array<{ space: number; lane: Lane }>;
 }

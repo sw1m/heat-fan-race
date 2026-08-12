@@ -15,6 +15,7 @@ export const USA_BEGINNER_TRACK: TrackConfig = {
   name: 'USA — one-lap learning race',
   laps: 1,
   finishSpace: 40,
+  engineHeatCapacity: 6,
   // This is a functional starter circuit. See docs/track-data.md for provenance.
   corners: [
     { id: 'corner-1', lineSpace: 10, speedLimit: 4, label: 'Turn 1' },
@@ -36,5 +37,6 @@ export const BASIC_VALUES = [1, 2, 3, 4] as const;
 export const STARTING_HAND_SIZE = 7;
 export const USA_ENGINE_HEAT = 6;
 export const TOTAL_HEAT_CARDS = 7;
+export const STARTER_DECK_EXTRA_HEAT_CARDS = TOTAL_HEAT_CARDS - USA_ENGINE_HEAT;
 export const MAX_PLAYERS = 6;
 export const MIN_PLAYERS = 2;
