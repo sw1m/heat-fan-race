@@ -129,6 +129,54 @@ test('can submit the first plan after starting a new local race from results', a
   await expect(page.getByText('ROUND 2', { exact: true })).toBeVisible();
 });
 
+test('can restart after reviewing an actually completed local race', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/?fresh=actual-restart');
+  await page.getByLabel('Nickname').fill('Actual Finish Tester');
+  await page.getByRole('button', { name: 'CREATE RACE' }).click();
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await page.getByRole('button', { name: 'START RACE' }).click();
+
+  for (let turn = 0; turn < 45; turn += 1) {
+    const planning = page.getByText('PLANNING', { exact: true });
+    if (await planning.isVisible()) {
+      const gearText = await page.locator('.metric').filter({ hasText: 'GEAR' }).innerText();
+      const currentGear = Number(gearText.match(/\d/)?.[0] ?? 1);
+      const targetGear = Math.max(1, currentGear - 1);
+      await page.getByRole('button', { name: String(targetGear), exact: true }).click();
+      const playableCards = page.locator(
+        '.hand-panel .card:not(.card-heat):not(.card-starting_heat)',
+      );
+      for (let card = 0; card < targetGear; card += 1) await playableCards.nth(card).click();
+      await page.getByRole('button', { name: 'LOCK IN PLAN' }).click();
+    }
+
+    for (let reaction = 0; reaction < 3; reaction += 1) {
+      const skipAdrenaline = page.getByRole('button', { name: 'SKIP ADRENALINE' });
+      if (await skipAdrenaline.isVisible()) {
+        await skipAdrenaline.click();
+        continue;
+      }
+      const pass = page.getByRole('button', { name: 'KEEP HAND + END TURN' });
+      if (await pass.isVisible()) await pass.click();
+      break;
+    }
+    if (await page.getByText('CHECKERED FLAG', { exact: true }).isVisible()) break;
+    await page.waitForTimeout(50);
+  }
+
+  await expect(page.getByText('CHECKERED FLAG', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'REVIEW RACE' }).click();
+  await expect(page.getByText('RACE REVIEW', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'NEW RACE' }).click();
+  await expect(page.getByText('ROUND 1', { exact: true })).toBeVisible();
+
+  const firstCard = page.locator('.hand-panel .card').first();
+  await firstCard.click();
+  await page.getByRole('button', { name: 'LOCK IN PLAN' }).click();
+  await expect(page.getByText('PLAYER REACTION', { exact: true })).toBeVisible();
+});
+
 test('two browser contexts can create, join, start, and observe a synchronized room when Supabase is configured', async ({
   browser,
 }) => {

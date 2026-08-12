@@ -216,6 +216,11 @@ function CarToken({ color, className = '' }: { color: string; className?: string
 function localPublicPlayers(game: GameState): RoomPlayer[] {
   const publicState = getPublicState(game, game.players[0]?.id ?? '');
   return publicState.players.map((player) => ({
+    // `getPublicState` deliberately omits controller and private card data.
+    // The local preview still needs the controller metadata when it mirrors
+    // the authoritative game into its room envelope; otherwise a finished
+    // race followed by NEW RACE turns every bot into a human seat.
+    isBot: game.players.find((candidate) => candidate.id === player.id)?.controller === 'BOT',
     id: player.id,
     nickname: player.name,
     seat: player.seat,
@@ -232,7 +237,6 @@ function localPublicPlayers(game: GameState): RoomPlayer[] {
     finished: player.finished,
     finishRank: player.finishRank,
     finishRound: player.finishRound,
-    isBot: player.controller === 'BOT',
   }));
 }
 
