@@ -16,7 +16,15 @@ import {
   orderedPlayers,
   positionSort,
 } from './track';
-import type { Card, GameAction, GameLogEntry, GameState, PlayerState, RandomSource } from './types';
+import type {
+  Card,
+  GameAction,
+  GameLogEntry,
+  GameState,
+  PendingReaction,
+  PlayerState,
+  RandomSource,
+} from './types';
 
 const now = () => Date.now();
 
@@ -198,13 +206,7 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
   state.pending = {
     kind: adrenaline ? 'ADRENALINE' : 'GEAR_REACTION',
     playerId: player.id,
-    options: adrenaline
-      ? [
-          'ADRENALINE_SPEED',
-          ...(adrenalineCooldownAvailable ? ['ADRENALINE_COOLDOWN'] : []),
-          'PASS_REACTION',
-        ]
-      : [],
+    options: [],
     speed,
     startSpace: moved.start,
     movedSpace: moved.end,
@@ -217,6 +219,9 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
     slipstreamUsed: false,
     crossedCornerIds: corners.map((corner) => corner.id),
   };
+  if (adrenaline) {
+    state.pending.options = reactionOptions(state, state.pending, player);
+  }
   log(
     state,
     `${player.name} reveals speed ${speed} and moves to space ${player.position.space}.`,
@@ -230,16 +235,36 @@ function openGearReaction(state: GameState): void {
   if (!pending) return;
   const player = findPlayer(state, pending.playerId);
   pending.kind = 'GEAR_REACTION';
-  pending.options = ['PASS_REACTION'];
-  if (pending.boostAvailable && player.engine.length > 0) pending.options.unshift('BOOST');
+  pending.options = reactionOptions(state, pending, player);
+}
+
+function isReactionWindow(pending: PendingReaction | null): pending is PendingReaction {
+  return pending?.kind === 'ADRENALINE' || pending?.kind === 'GEAR_REACTION';
+}
+
+function reactionOptions(
+  state: GameState,
+  pending: PendingReaction,
+  player: PlayerState,
+): string[] {
+  const options = ['PASS_REACTION'];
+  if (pending.boostAvailable && player.engine.length > 0) options.unshift('BOOST');
   if (
     pending.cooldownAvailable > 0 &&
     canCoolDown(player, pending.cooldownAvailable, engineCapacity(state, player))
   ) {
-    pending.options.unshift('COOLDOWN');
+    options.unshift('COOLDOWN');
   }
   pending.slipstreamAvailable = !pending.slipstreamUsed && canSlipstream(state, player);
-  if (pending.slipstreamAvailable) pending.options.unshift('SLIPSTREAM');
+  if (pending.slipstreamAvailable) options.unshift('SLIPSTREAM');
+  if (pending.adrenalineSpeedAvailable) options.unshift('ADRENALINE_SPEED');
+  if (
+    pending.adrenalineCooldownAvailable &&
+    canCoolDown(player, 1, engineCapacity(state, player))
+  ) {
+    options.unshift('ADRENALINE_COOLDOWN');
+  }
+  return options;
 }
 
 function refreshCrossedCorners(state: GameState): void {
@@ -534,52 +559,45 @@ export function applyGameAction(
     case 'DISCARD_CARDS':
       submitOptionalDiscard(state, action.playerId, action.cardIds, random);
       return state;
-    case 'ADRENALINE_SPEED':
-      if (
-        !state.pending ||
-        state.pending.kind !== 'ADRENALINE' ||
-        !state.pending.adrenalineSpeedAvailable
-      )
+    case 'ADRENALINE_SPEED': {
+      const pending = state.pending;
+      if (!isReactionWindow(pending) || !pending.adrenalineSpeedAvailable)
         throw new Error('Adrenaline speed is unavailable.');
-      state.pending.adrenalineSpeedAvailable = false;
-      state.pending.speed += 1;
+      pending.adrenalineSpeedAvailable = false;
+      pending.speed += 1;
       movePlayer(state, player, 1);
-      state.pending.movedSpace = player.position.space;
+      pending.movedSpace = player.position.space;
       refreshCrossedCorners(state);
-      state.pending.options = state.pending.options.filter(
-        (option) => option !== 'ADRENALINE_SPEED',
-      );
+      pending.options = pending.options.filter((option) => option !== 'ADRENALINE_SPEED');
       log(state, `${player.name} uses Adrenaline for +1 speed.`, player.id);
       openGearReaction(state);
       return state;
-    case 'ADRENALINE_COOLDOWN':
-      if (
-        !state.pending ||
-        state.pending.kind !== 'ADRENALINE' ||
-        !state.pending.adrenalineCooldownAvailable
-      )
+    }
+    case 'ADRENALINE_COOLDOWN': {
+      const pending = state.pending;
+      if (!isReactionWindow(pending) || !pending.adrenalineCooldownAvailable)
         throw new Error('Adrenaline cooldown is unavailable.');
       if (!canCoolDown(player, 1, engineCapacity(state, player)))
         throw new Error('Adrenaline cooldown is unavailable while the engine is full.');
-      state.pending.adrenalineCooldownAvailable = false;
+      pending.adrenalineCooldownAvailable = false;
       if (addHeatToEngine(player, 1, engineCapacity(state, player)) !== 1)
         throw new Error('Adrenaline cooldown needs Heat in your hand.');
-      state.pending.options = state.pending.options.filter(
-        (option) => option !== 'ADRENALINE_COOLDOWN',
-      );
+      pending.options = pending.options.filter((option) => option !== 'ADRENALINE_COOLDOWN');
       log(state, `${player.name} uses Adrenaline to cool down 1 Heat.`, player.id);
       openGearReaction(state);
       return state;
+    }
     case 'BOOST': {
-      if (!state.pending || state.pending.kind !== 'GEAR_REACTION' || !state.pending.boostAvailable)
+      const pending = state.pending;
+      if (!isReactionWindow(pending) || !pending.boostAvailable)
         throw new Error('Boost is unavailable.');
       if (!payHeat(player)) throw new Error('Boost requires 1 Heat in the engine.');
       const boostSpeed = revealBasicSpeed(player, random);
       const boostMove = movePlayer(state, player, boostSpeed);
-      state.pending.speed += boostSpeed;
-      state.pending.movedSpace = boostMove.end;
+      pending.speed += boostSpeed;
+      pending.movedSpace = boostMove.end;
       refreshCrossedCorners(state);
-      state.pending.boostAvailable = false;
+      pending.boostAvailable = false;
       log(
         state,
         `${player.name} boosts for +${boostSpeed} speed and moves to space ${player.position.space}.`,
@@ -589,42 +607,37 @@ export function applyGameAction(
       return state;
     }
     case 'COOLDOWN': {
-      if (
-        !state.pending ||
-        state.pending.kind !== 'GEAR_REACTION' ||
-        state.pending.cooldownAvailable <= 0
-      )
+      const pending = state.pending;
+      if (!isReactionWindow(pending) || pending.cooldownAvailable <= 0)
         throw new Error('Cooldown is unavailable.');
       if (!canCoolDown(player, 1, engineCapacity(state, player)))
         throw new Error('Cooldown is unavailable while the engine is full.');
       const cooled = addHeatToEngine(
         player,
-        state.pending.cooldownAvailable,
+        pending.cooldownAvailable,
         engineCapacity(state, player),
       );
       if (cooled === 0) throw new Error('Cooldown needs Heat in your hand.');
-      state.pending.cooldownAvailable = 0;
+      pending.cooldownAvailable = 0;
       log(state, `${player.name} cools ${cooled} Heat back into the engine.`, player.id);
       openGearReaction(state);
       return state;
     }
-    case 'SLIPSTREAM':
-      if (
-        !state.pending ||
-        state.pending.kind !== 'GEAR_REACTION' ||
-        !state.pending.slipstreamAvailable
-      )
+    case 'SLIPSTREAM': {
+      const pending = state.pending;
+      if (!isReactionWindow(pending) || !pending.slipstreamAvailable)
         throw new Error('Slipstream is unavailable.');
       if (player.position.space + 2 > state.track.finishSpace)
         throw new Error('Slipstream cannot cross the finish line.');
       movePlayer(state, player, 2);
-      state.pending.movedSpace = player.position.space;
+      pending.movedSpace = player.position.space;
       refreshCrossedCorners(state);
-      state.pending.slipstreamAvailable = false;
-      state.pending.slipstreamUsed = true;
+      pending.slipstreamAvailable = false;
+      pending.slipstreamUsed = true;
       log(state, `${player.name} slipstreams 2 spaces.`, player.id);
       openGearReaction(state);
       return state;
+    }
     case 'PASS_REACTION':
       if (!state.pending) throw new Error('There is no reaction to pass.');
       if (state.pending.kind === 'ADRENALINE') openGearReaction(state);

@@ -19,7 +19,7 @@ After all selections are locked, players resolve from the car nearest the Race L
 
 ## Speed, Stress, Boost, and Heat
 
-Cooldown uses the player's effective engine capacity: the selected course's base capacity plus one slot for each special Heat card in that player's deck. The USA starter deck therefore reports `6/7` at setup and permits the seventh Heat card to enter the engine. The available supply is seven Heat cards at setup. After an Adrenaline choice, the normal gear reaction window remains available; a gear-3/4 car may Boost when it has engine Heat.
+Cooldown uses the player's effective engine capacity: the selected course's base capacity plus one slot for each special Heat card in that player's deck. The USA starter deck therefore reports `6/7` at setup and permits the seventh Heat card to enter the engine. The available supply is seven Heat cards at setup. During React, the available Adrenaline and current-gear symbols are presented together and may be activated in any order; a gear-3/4 car may Boost when it has engine Heat.
 
 Basic and the starting 0/5 contribute their printed speed when played normally. A Stress card reveals cards from that player’s draw deck until a Basic Speed card appears; non-Basic reveals, including starting 0/5 and Heat, are discarded and do not supply the Stress speed. Boost pays one engine Heat, reveals by the same Basic-Speed process, adds that speed, and moves again. Heat paid from the engine goes to discard; it is not removed from the game.
 

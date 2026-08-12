@@ -532,7 +532,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.log.some((entry) => entry.text.includes('boosts'))).toBe(true);
   });
 
-  it('keeps Boost available after using Adrenaline speed', () => {
+  it('allows Boost and Adrenaline in either order during the reaction step', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     state.players[0].position = { space: 3, lane: 0 };
     state.players[1].position = { space: 0, lane: 0 };
@@ -562,11 +562,12 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     );
     state = pass(state, 'p1');
     expect(state.pending?.kind).toBe('ADRENALINE');
-
-    state = applyGameAction(state, { type: 'ADRENALINE_SPEED', playerId: 'p2' }, fixedRandom);
-    expect(state.pending?.kind).toBe('GEAR_REACTION');
     expect(state.pending?.options).toContain('BOOST');
+
     state = applyGameAction(state, { type: 'BOOST', playerId: 'p2' }, fixedRandom);
+    expect(state.pending?.kind).toBe('GEAR_REACTION');
+    expect(state.pending?.options).toContain('ADRENALINE_SPEED');
+    state = applyGameAction(state, { type: 'ADRENALINE_SPEED', playerId: 'p2' }, fixedRandom);
     expect(state.players[1].engine).toHaveLength(0);
     expect(state.players[1].played.map((card) => card.id)).toContain('adrenaline-boost');
   });
