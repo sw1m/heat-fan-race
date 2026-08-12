@@ -21,7 +21,7 @@ Local solo testing uses `src/engine/bot.ts`. The bot policy scores legal plans u
 
 Leaving is an explicit command. Local rooms remove their browser-persisted room record. Remote rooms call the transactional `leave_room` RPC: lobby departures release the seat and transfer host ownership when needed, while departures during a race mark the existing seat disconnected so hidden state and turn ordering remain stable for rejoin.
 
-All plans are submitted before movement. The engine calculates resolution order from public positions (space descending, then inside lane), then opens one active player’s reaction window. Passing is always available so Boost, Cooldown, Slipstream, or Adrenaline cannot deadlock a race.
+All plans are submitted before movement. The engine calculates resolution order from public positions (space descending, then inside lane), then opens one active player’s reaction window. Passing is always available so Boost, Cooldown, Slipstream, or Adrenaline cannot deadlock a race. Crossing the finish line marks the car immediately so the UI can show the in-race finish banner, while the same-round distance tiebreak and winner are finalized at cleanup. `FINISHED` is withheld until every racer has crossed so the remaining places stay playable and visible.
 
 ## Private state boundary
 

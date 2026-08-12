@@ -32,7 +32,7 @@ The optional Discard step allows a racer to discard numeric cards from hand befo
 
 ## Finish and ranking
 
-Normal movement, Adrenaline, Boost, and legal non-finish Slipstream obey landing rules. Once the finish line is crossed, post-finish corner limits are ignored. The first group of cars to cross wins that round; cars in the same crossing round are ranked by their unclamped distance beyond the finish line, then by the inside Race Line lane, then by seat order. At round cleanup, finished cars receive a stable finish rank and leave the track for the Hall of Fame order; they no longer occupy a track space. The engine retains finish progress for ranking and review.
+The painted finish marker is a track space, not the finish itself. A car must land in a space beyond that marker to cross the finish line; landing on the marker remains in the race. Normal movement, Adrenaline, Boost, and legal non-finish Slipstream obey landing rules. Once the finish line is crossed, post-finish corner limits are ignored. The UI marks a crossing immediately, while the turn and subsequent rounds continue so the remaining places can be determined. At round cleanup, newly finished cars receive stable ranks using their actual post-finish landing distance, then the inside Race Line lane, then seat order. Finished cars no longer participate in blocking, but their finish progress remains visible for review.
 
 ## Determinism and tests
 

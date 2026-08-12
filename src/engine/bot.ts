@@ -81,10 +81,10 @@ function planScore(state: GameState, player: PlayerState, gear: number, cards: C
     state.track,
     player.id,
   );
-  const desiredSpace = Math.min(state.track.finishSpace, player.position.space + speed);
+  const desiredSpace = player.position.space + speed;
   const blockedSpaces = Math.max(0, desiredSpace - landing.space);
   const heatCost = cornerHeatCost(state, player.position.space, landing.space, speed);
-  const reachesFinish = desiredSpace >= state.track.finishSpace;
+  const reachesFinish = desiredSpace > state.track.finishSpace;
 
   let score = (landing.space - player.position.space) * 16;
   score += speed * 0.2;
@@ -175,7 +175,7 @@ function reactionScore(
   const movement = afterPlayer.position.space - beforePlayer.position.space;
   const clearedHeat = heatInHand(beforePlayer) - heatInHand(afterPlayer);
   const reachedFinish =
-    afterPlayer.position.space >= after.track.finishSpace || afterPlayer.finishProgress !== null;
+    afterPlayer.position.space > after.track.finishSpace || afterPlayer.finishProgress !== null;
   let score = movement * 18 + clearedHeat * 10;
 
   if (reachedFinish) score += 100_000;
@@ -246,7 +246,7 @@ export function chooseBotReaction(state: GameState, playerId: string): GameActio
 export function advanceBotTurns(input: GameState, random: RandomSource = Math.random): GameState {
   let state = input;
   for (let index = 0; index < BOT_ACTION_LIMIT; index += 1) {
-    if (state.phase === 'FINISHED' || state.winnerId !== null) return state;
+    if (state.phase === 'FINISHED') return state;
     if (state.phase === 'PLANNING') {
       if (!humansHaveSubmitted(state)) return state;
       const bot = state.players.find(
