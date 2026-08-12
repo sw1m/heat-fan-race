@@ -110,6 +110,54 @@ describe('rules-following bot', () => {
     expect(() => applyGameAction(state, action, fixedRandom)).not.toThrow();
   });
 
+  it('conserves Heat early and preserves a legal next-turn corner approach', () => {
+    const state = createInitialGame([human, bot], fixedRandom);
+    const botPlayer = state.players.find((player) => player.id === bot.id)!;
+    botPlayer.gear = 2;
+    botPlayer.position = { space: 4, lane: 0 };
+    botPlayer.engine = botPlayer.engine.slice(0, 4);
+    botPlayer.hand = [
+      { id: 'early-four-a', kind: 'BASIC', value: 4 },
+      { id: 'early-four-b', kind: 'BASIC', value: 4 },
+      { id: 'early-four-c', kind: 'BASIC', value: 4 },
+      { id: 'early-three-a', kind: 'BASIC', value: 3 },
+      { id: 'early-three-b', kind: 'BASIC', value: 3 },
+      { id: 'early-two', kind: 'BASIC', value: 2 },
+      { id: 'early-heat', kind: 'HEAT' },
+    ];
+
+    const action = chooseBotPlan(state, bot.id);
+
+    expect(action).toMatchObject({ gear: 1 });
+    expect(action.type).toBe('SUBMIT_PLAN');
+    if (action.type === 'SUBMIT_PLAN') expect(action.cardIds).not.toContain('early-heat');
+  });
+
+  it('maximizes actual distance beyond the finish and spends available Heat late', () => {
+    const state = createInitialGame([human, bot], fixedRandom);
+    const botPlayer = state.players.find((player) => player.id === bot.id)!;
+    botPlayer.gear = 2;
+    botPlayer.position = { space: 38, lane: 0 };
+    botPlayer.engine = botPlayer.engine.slice(0, 1);
+    botPlayer.hand = [
+      { id: 'finish-one', kind: 'BASIC', value: 1 },
+      { id: 'finish-two', kind: 'BASIC', value: 2 },
+      { id: 'finish-three', kind: 'BASIC', value: 3 },
+      { id: 'finish-four-a', kind: 'BASIC', value: 4 },
+      { id: 'finish-four-b', kind: 'BASIC', value: 4 },
+      { id: 'finish-five', kind: 'STARTING_FIVE', value: 5 },
+      { id: 'finish-zero', kind: 'STARTING_ZERO', value: 0 },
+    ];
+
+    const action = chooseBotPlan(state, bot.id);
+
+    expect(action).toMatchObject({ gear: 4 });
+    if (action.type === 'SUBMIT_PLAN') {
+      const after = applyGameAction(state, action, fixedRandom);
+      expect(after.players.find((player) => player.id === bot.id)?.engine).toHaveLength(0);
+    }
+  });
+
   it('avoids a cluttered plan when blocking erases the value of the extra card', () => {
     const state = createInitialGame([human, bot, blockerA, blockerB], fixedRandom);
     const botPlayer = state.players.find((player) => player.id === bot.id)!;
@@ -168,6 +216,24 @@ describe('rules-following bot', () => {
     });
   });
 
+  it('uses Heat for extra finish-line distance when the finish is within reach', () => {
+    const state = reactionState(['BOOST', 'PASS_REACTION']);
+    const botPlayer = state.players.find((player) => player.id === bot.id)!;
+    botPlayer.position = { space: 39, lane: 0 };
+    botPlayer.gear = 3;
+    botPlayer.engine = botPlayer.engine.slice(0, 2);
+    botPlayer.hand = [];
+    botPlayer.deck = [{ id: 'finish-boost-four', kind: 'BASIC', value: 4 }];
+    state.pending!.speed = 1;
+    state.pending!.startSpace = 39;
+    state.pending!.movedSpace = 40;
+
+    expect(chooseBotReaction(state, bot.id)).toEqual({
+      type: 'BOOST',
+      playerId: bot.id,
+    });
+  });
+
   it('waits for all human plans before locking the bot plan', () => {
     const state = createInitialGame([human, bot], fixedRandom);
     const waiting = advanceBotTurns(state, fixedRandom);
@@ -211,6 +277,26 @@ describe('rules-following bot', () => {
     expect(finished.phase).toBe('FINISHED');
     expect(finished.winnerId).not.toBeNull();
     expect(finished.players.some((player) => player.finishRank !== null)).toBe(true);
+  });
+
+  it('can complete a six-bot race with the forward-looking policy', () => {
+    const state = createInitialGame(
+      [
+        { ...human, id: 'bot-1', name: 'Bot 1', controller: 'BOT' as const },
+        bot,
+        blockerA,
+        blockerB,
+        botE,
+        botF,
+      ],
+      fixedRandom,
+    );
+
+    const finished = advanceBotTurns(state, fixedRandom);
+
+    expect(finished.phase).toBe('FINISHED');
+    expect(finished.winnerId).not.toBeNull();
+    expect(finished.players.every((player) => player.finishRank !== null)).toBe(true);
   });
 
   it('stops after a winner and keeps actual post-finish landing spaces', () => {

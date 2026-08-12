@@ -25,6 +25,14 @@ function heatInHand(player: PlayerState): number {
   return player.hand.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length;
 }
 
+function availableHeat(player: PlayerState): number {
+  return (
+    player.engine.length +
+    player.hand.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length +
+    player.deck.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length
+  );
+}
+
 function expectedStressSpeed(player: PlayerState): number {
   const knownBasic = [...player.deck, ...player.discard].filter((card) => card.kind === 'BASIC');
   if (knownBasic.length === 0) return 2.5;
@@ -54,6 +62,18 @@ function legalGear(player: PlayerState, gear: number): boolean {
   return delta <= 1 || (delta === 2 && player.engine.length > 0);
 }
 
+function raceProgress(state: GameState, player: PlayerState): number {
+  const startingSpace = Math.min(0, ...state.track.grid.map((position) => position.space));
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      (player.position.space - startingSpace) /
+        Math.max(1, state.track.finishSpace - startingSpace),
+    ),
+  );
+}
+
 function cornerHeatCost(
   state: GameState,
   fromSpace: number,
@@ -64,6 +84,67 @@ function cornerHeatCost(
     (total, corner) => total + Math.max(0, speed - corner.speedLimit),
     0,
   );
+}
+
+function projectedNextHand(player: PlayerState, cards: Card[]): Card[] {
+  const selectedIds = new Set(cards.map((card) => card.id));
+  const remainingHand = player.hand.filter((card) => !selectedIds.has(card.id));
+  const drawCount = Math.min(cards.length, player.deck.length);
+  const drawn = player.deck.slice(Math.max(0, player.deck.length - drawCount));
+  return [...remainingHand, ...drawn];
+}
+
+function expectedCardSpeed(card: Card, player: PlayerState): number {
+  return isSpeedCard(card)
+    ? (card.value ?? 0)
+    : card.kind === 'STRESS'
+      ? expectedStressSpeed(player)
+      : 0;
+}
+
+function expectedSpeedForGear(player: PlayerState, gear: number): number {
+  const playable = player.hand
+    .filter((card) => card.kind !== 'HEAT' && card.kind !== 'STARTING_HEAT')
+    .sort((left, right) => expectedCardSpeed(right, player) - expectedCardSpeed(left, player));
+  if (playable.length < gear) return 0;
+  return playable
+    .slice(0, gear)
+    .reduce((total, card) => total + expectedCardSpeed(card, player), 0);
+}
+
+function nextTurnProjection(
+  state: GameState,
+  player: PlayerState,
+  gear: number,
+  cards: Card[],
+  landing: PlayerState['position'],
+  currentHeatCost: number,
+): { speed: number; heatCost: number; heatAvailable: number } {
+  const shiftHeat = Math.abs(gear - player.gear) === 2 ? 1 : 0;
+  const projectedEngine = Math.max(0, player.engine.length - shiftHeat - currentHeatCost);
+  const projectedPlayer: PlayerState = {
+    ...player,
+    gear,
+    position: landing,
+    hand: projectedNextHand(player, cards),
+    engine: player.engine.slice(0, projectedEngine),
+  };
+  const nextGearCandidates = [1, 2, 3, 4].filter((nextGear) =>
+    legalGear(projectedPlayer, nextGear),
+  );
+  const speed = Math.max(
+    0,
+    ...nextGearCandidates.map((nextGear) => expectedSpeedForGear(projectedPlayer, nextGear)),
+  );
+  const heatCost = cornerHeatCost(state, landing.space, landing.space + speed, speed);
+  const heatAvailableAfter = Math.max(
+    0,
+    availableHeat(player) -
+      shiftHeat -
+      currentHeatCost -
+      cards.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length,
+  );
+  return { speed, heatCost, heatAvailable: heatAvailableAfter };
 }
 
 function planScore(state: GameState, player: PlayerState, gear: number, cards: Card[]): number {
@@ -85,19 +166,40 @@ function planScore(state: GameState, player: PlayerState, gear: number, cards: C
   const desiredSpace = player.position.space + speed;
   const blockedSpaces = Math.max(0, desiredSpace - landing.space);
   const heatCost = cornerHeatCost(state, player.position.space, landing.space, speed);
-  const reachesFinish = desiredSpace > state.track.finishSpace;
+  const reachesFinish = landing.space > state.track.finishSpace;
+  const finishMargin = Math.max(0, landing.space - state.track.finishSpace);
+  const progress = raceProgress(state, player);
+  const earlyHeatConservation = 1 - progress;
+  const projectedNext = nextTurnProjection(state, player, gear, cards, landing, heatCost);
 
   let score = (landing.space - player.position.space) * 16;
   score += speed * 0.2;
   score -= blockedSpaces * 14;
-  score -= heatCost * 8;
-  score -= shiftHeat * 5;
+  // Heat is a resource to protect early and spend late. This also makes a
+  // two-position shift carry a real early-race opportunity cost.
+  score -= heatCost * (8 + earlyHeatConservation * 28);
+  score -= shiftHeat * (5 + earlyHeatConservation * 22);
   score -= stressCount * 1.5;
-  score -= heatCount * 12;
+  score -= heatCount * (12 + earlyHeatConservation * 24);
   if (cluttered) score -= 20;
   if (heatCost > availableHeat) score -= 10_000 + (heatCost - availableHeat) * 100;
   else if (heatCost === availableHeat && !reachesFinish) score -= 8;
-  if (reachesFinish) score += 100_000;
+  // Look one turn ahead: prefer a current gear that leaves a strong legal
+  // next gear and enough Heat for the next corner.
+  score += projectedNext.speed * 3.5;
+  if (projectedNext.heatCost > projectedNext.heatAvailable) {
+    score -=
+      (projectedNext.heatCost - projectedNext.heatAvailable) * (12 + earlyHeatConservation * 20);
+  }
+  if (reachesFinish) {
+    score += 100_000 + finishMargin * 2_000;
+    // Near the finish, use the remaining available Heat instead of carrying
+    // it past the line. This is intentionally a preference, not an illegal
+    // guarantee: a Heat card still buried in the deck may be unreachable.
+    score -= projectedNext.heatAvailable * (120 + progress * 1_000);
+  } else if (progress > 0.7) {
+    score -= projectedNext.heatAvailable * (progress - 0.7) * 80;
+  }
   if (landing.space === player.position.space && speed > 0) score -= 20;
   return score;
 }
@@ -175,11 +277,23 @@ function reactionScore(
   const afterPlayer = after.players.find((player) => player.id === playerId)!;
   const movement = afterPlayer.position.space - beforePlayer.position.space;
   const clearedHeat = heatInHand(beforePlayer) - heatInHand(afterPlayer);
+  const heatSpent = Math.max(0, availableHeat(beforePlayer) - availableHeat(afterPlayer));
+  const progress = raceProgress(before, beforePlayer);
   const reachedFinish =
     afterPlayer.position.space > after.track.finishSpace || afterPlayer.finishProgress !== null;
+  const finishMargin = Math.max(
+    0,
+    (afterPlayer.finishProgress ?? afterPlayer.position.space) - after.track.finishSpace,
+  );
   let score = movement * 18 + clearedHeat * 10;
 
-  if (reachedFinish) score += 100_000;
+  if (reachedFinish) {
+    score += 100_000 + finishMargin * 2_000;
+    score += heatSpent * 250;
+    score -= availableHeat(afterPlayer) * (200 + finishMargin * 50);
+  } else {
+    score -= heatSpent * (10 + (1 - progress) * 24);
+  }
   if (after.pending?.playerId === playerId) {
     const cornerCost = cornerHeatCost(
       after,
