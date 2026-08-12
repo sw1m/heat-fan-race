@@ -702,6 +702,13 @@ function RoomScreen({
         />
       ) : game ? (
         <RaceView
+          key={
+            isRemoteRoom(room)
+              ? game.phase === 'FINISHED'
+                ? 'remote-finished-race'
+                : 'remote-active-race'
+              : (room.raceId ?? 'local-race')
+          }
           game={game}
           localPlayerId={identity}
           onAction={onAction}

@@ -63,6 +63,27 @@ describe('local lobby seat management', () => {
     expect(restarted.players.every((player) => !player.finished && !player.submitted)).toBe(true);
   });
 
+  it('restarts from authoritative bot roles when the room mirror is stale', () => {
+    let room = createLocalRoom('Host', 'host');
+    room = addLocalBotSeat(room);
+    room = startLocalRoom(room);
+    const stalePlayers = room.players.map((player) => ({ ...player, isBot: false }));
+    const finished = {
+      ...room,
+      status: 'FINISHED' as const,
+      players: stalePlayers,
+      game: { ...room.game!, phase: 'FINISHED' as const },
+    };
+
+    const restarted = restartLocalRoom(finished);
+
+    expect(restarted.game?.players.find((player) => player.id === 'bot-seat-2')?.controller).toBe(
+      'BOT',
+    );
+    expect(restarted.players.find((player) => player.id === 'bot-seat-2')?.isBot).toBe(true);
+    expect(restarted.raceId).not.toBe(room.raceId);
+  });
+
   it('rejects a local restart before the race is finished', () => {
     let room = createLocalRoom('Host', 'host');
     room = addLocalBotSeat(room);
