@@ -56,6 +56,7 @@ export interface PlayerState {
   finished: boolean;
   finishRank: number | null;
   finishProgress: number | null;
+  finishRound: number | null;
   controller?: 'HUMAN' | 'BOT';
   disconnected?: boolean;
 }

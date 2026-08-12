@@ -26,6 +26,7 @@ export interface RoomPlayer {
   discardCount?: number;
   finished?: boolean;
   finishRank?: number | null;
+  finishRound?: number | null;
   isBot?: boolean;
 }
 

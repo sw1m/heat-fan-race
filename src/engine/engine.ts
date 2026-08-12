@@ -294,6 +294,7 @@ function applyCornerChecks(
   player.finished = player.position.space > state.track.finishSpace;
   if (player.finished) {
     player.finishProgress ??= player.position.space;
+    player.finishRound ??= state.round;
     log(state, `${player.name} crosses the finish line.`, player.id);
   }
   void random;
@@ -479,6 +480,7 @@ export function createInitialGame(
       finished: false,
       finishRank: null,
       finishProgress: null,
+      finishRound: null,
     };
     drawCards(player, STARTING_HAND_SIZE, random);
     return player;
@@ -653,6 +655,7 @@ export function getPublicState(
       finished: player.finished,
       finishRank: player.finishRank,
       finishProgress: player.finishProgress,
+      finishRound: player.finishRound,
       handCount: player.hand.length,
       deckCount: player.deck.length,
       discardCount: player.discard.length,

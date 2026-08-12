@@ -14,6 +14,16 @@ export interface HeatSummary {
   inDiscard: number;
   inPlayed: number;
   extraDeckCards: number;
+  startingHeatLocation: 'ENGINE' | 'HAND' | 'DRAW PILE' | 'DISCARD' | 'PLAYED' | 'MISSING';
+}
+
+function startingHeatLocation(player: PlayerState): HeatSummary['startingHeatLocation'] {
+  if (player.engine.some((card) => card.kind === 'STARTING_HEAT')) return 'ENGINE';
+  if (player.hand.some((card) => card.kind === 'STARTING_HEAT')) return 'HAND';
+  if (player.deck.some((card) => card.kind === 'STARTING_HEAT')) return 'DRAW PILE';
+  if (player.discard.some((card) => card.kind === 'STARTING_HEAT')) return 'DISCARD';
+  if (player.played.some((card) => card.kind === 'STARTING_HEAT')) return 'PLAYED';
+  return 'MISSING';
 }
 
 /**
@@ -40,5 +50,6 @@ export function summarizeHeat(player: PlayerState, engineCapacity: number): Heat
     inDiscard,
     inPlayed,
     extraDeckCards: Math.max(0, total - engineCapacity),
+    startingHeatLocation: startingHeatLocation(player),
   };
 }

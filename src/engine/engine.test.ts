@@ -76,6 +76,7 @@ describe('beginner deck and card movement', () => {
       finished: false,
       finishRank: null,
       finishProgress: null,
+      finishRound: null,
     };
     expect(drawCards(player, 1, fixedRandom)).toBe(1);
     expect(player.hand[0].kind).toBe('BASIC');
@@ -199,6 +200,7 @@ describe('track rules', () => {
     finished: false,
     finishRank: null,
     finishProgress: null,
+    finishRound: null,
   });
 
   it('finds multiple corners in order and limits spaces to two cars', () => {
@@ -801,6 +803,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
     expect(state.players[0].finished).toBe(true);
     expect(state.players[0].finishRank).toBe(1);
+    expect(state.players[0].finishRound).toBe(1);
     expect(state.players[0].position.space).toBe(41);
     expect(state.winnerId).toBe('p1');
     expect(state.phase).toBe('PLANNING');
@@ -847,6 +850,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     state = pass(state, 'p1');
     expect(state.phase).toBe('PLANNING');
     expect(state.players[0].finishProgress).toBe(43);
+    expect(state.players[0].finishRound).toBe(1);
     expect(state.players[1].finishProgress).toBeNull();
     expect(state.players[0].position.space).toBe(43);
     expect(state.players[1].position.space).toBe(40);

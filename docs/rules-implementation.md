@@ -8,6 +8,7 @@ The authority used for these interpretations is the [Days of Wonder Heat page](h
 - Each racer also receives three Stress cards and the three standard starting cards: starting 0, starting 5, and one extra starting Heat card. The starting cards are in the beginner deck; they are not Garage choices in this V1.
 - The selected course supplies the engine capacity. The USA setup supplies six engine slots; the starting Heat card is an additional card shuffled into the beginner deck, not a seventh engine slot. The engine therefore remains `6/6`, while the deck contains seven Heat cards in total.
 - The deck is shuffled, seven cards are dealt, and the gear starts at 1.
+- The extra starter Heat remains a real card throughout the hand, draw-pile, discard-pile, played-card, and engine transitions. The UI reports its current location so an extra card in the draw pile is not mistaken for a removed card.
 - Heat in hand clutters the hand: it cannot be played as a speed card while enough playable cards exist. If the hand cannot supply the gear’s card count, Heat can cover the missing slots and the car does not move; the gear resets to 1.
 
 ## Round order
@@ -34,7 +35,7 @@ The optional Discard step allows a racer to discard numeric cards from hand befo
 
 ## Finish and ranking
 
-The painted finish marker is a track space, not the finish itself. A car must land in a space beyond that marker to cross the finish line; landing on the marker remains in the race. Normal movement, Adrenaline, Boost, and legal non-finish Slipstream obey landing rules. Once the finish line is crossed, post-finish corner limits are ignored. The UI marks a crossing immediately, while the turn and subsequent rounds continue so the remaining places can be determined. At round cleanup, newly finished cars receive stable ranks using their actual post-finish landing distance, then the inside Race Line lane, then seat order. Finished cars no longer participate in blocking, but their finish progress remains visible for review.
+The painted finish marker is a track space, not the finish itself. A car must land in a space beyond that marker to cross the finish line; landing on the marker remains in the race. Normal movement, Adrenaline, Boost, and legal non-finish Slipstream obey landing rules. Once the finish line is crossed, post-finish corner limits are ignored. The UI marks a crossing immediately, while the turn and subsequent rounds continue so the remaining places can be determined. The engine records the first crossing round on `finishRound`; at round cleanup, newly finished cars receive stable ranks using their actual post-finish landing distance, then the inside Race Line lane, then seat order. Finished cars no longer participate in blocking, but their finish progress and finish turn remain visible for review.
 
 ## Determinism and tests
 

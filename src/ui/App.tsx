@@ -8,7 +8,7 @@ import {
 } from '../engine/constants';
 import { advanceBotTurns } from '../engine/bot';
 import { applyGameAction, getPublicState, isOptionalDiscardCard } from '../engine/engine';
-import { summarizeHeat } from '../engine/heat';
+import { summarizeHeat, type HeatSummary } from '../engine/heat';
 import { distanceToNextCorner, nextCorner } from '../engine/track';
 import type { Card, GameAction, GameState } from '../engine/types';
 import carMarkerAsset from '../assets/heat-race-car.png';
@@ -91,6 +91,23 @@ function engineHeatLabel(engineHeat: number | undefined, capacity: number): stri
   return `${count}/${capacity}`;
 }
 
+function starterHeatStatus(location: HeatSummary['startingHeatLocation']): string {
+  switch (location) {
+    case 'ENGINE':
+      return 'IN ENGINE';
+    case 'HAND':
+      return 'IN HAND - usable for Cooldown';
+    case 'DRAW PILE':
+      return 'IN DRAW PILE - still in the starter deck';
+    case 'DISCARD':
+      return 'IN DISCARD - returns when the pile reshuffles';
+    case 'PLAYED':
+      return 'PLAYED THIS TURN';
+    default:
+      return 'MISSING - report this state';
+  }
+}
+
 function heatCardsInHand(player: GameState['players'][number]): number {
   return player.hand.filter((card) => card.kind === 'HEAT' || card.kind === 'STARTING_HEAT').length;
 }
@@ -114,7 +131,7 @@ function cooldownUnavailableReason(
 
 type RacePositionPlayer = Pick<
   GameState['players'][number],
-  'position' | 'finished' | 'finishProgress' | 'finishRank' | 'seat'
+  'position' | 'finished' | 'finishProgress' | 'finishRank' | 'finishRound' | 'seat'
 >;
 
 function finishDistance(game: GameState, player: RacePositionPlayer): number {
@@ -207,6 +224,7 @@ function localPublicPlayers(game: GameState): RoomPlayer[] {
     discardCount: player.discardCount,
     finished: player.finished,
     finishRank: player.finishRank,
+    finishRound: player.finishRound,
     isBot: player.controller === 'BOT',
   }));
 }
@@ -932,6 +950,9 @@ function RaceView({
                 : ''}
               .
             </span>
+            <span className="helper-text heat-supply-note" data-testid="starter-heat-status">
+              STARTER HEAT: {starterHeatStatus(heatSummary.startingHeatLocation)}.
+            </span>
           </div>
         </section>
       </div>
@@ -1171,7 +1192,9 @@ function RaceView({
                 <div key={player.id}>
                   <strong>{player.finishRank ?? index + 1}.</strong>{' '}
                   <CarToken color={player.color} /> <span>{player.name}</span>{' '}
-                  <small>{racePositionLabel(game, player)}</small>
+                  <small>
+                    TURN {player.finishRound ?? '—'} · {racePositionLabel(game, player)}
+                  </small>
                 </div>
               ))}
             </div>
@@ -1199,6 +1222,14 @@ function RaceView({
               {game.players.find((player) => player.id === game.winnerId)?.name ?? 'The leader'}{' '}
               won. The remaining cars are frozen at their end-of-turn spaces.
             </strong>
+            <div className="finish-review-standings">
+              {[...game.players].sort(compareRacePositions).map((player, index) => (
+                <span key={player.id}>
+                  <b>{player.finishRank ?? index + 1}.</b> {player.name} · TURN{' '}
+                  {player.finishRound ?? '—'} · {racePositionLabel(game, player)}
+                </span>
+              ))}
+            </div>
           </div>
           <div className="button-row">
             {isHost ? (
@@ -1318,7 +1349,7 @@ function FinishProgressBanner({ game }: { game: GameState }): JSX.Element {
       <div className="finish-progress-standings">
         {ranked.map((player) => (
           <span key={player.id}>
-            <b>{player.finishRank ?? '—'}.</b> {player.name}
+            <b>{player.finishRank ?? '—'}.</b> {player.name} · T{player.finishRound ?? '—'}
           </span>
         ))}
       </div>
