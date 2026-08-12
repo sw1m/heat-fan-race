@@ -95,9 +95,10 @@ export function positionSort(a: PlayerState, b: PlayerState): number {
 }
 
 export function finishSort(a: PlayerState, b: PlayerState): number {
-  const aProgress = a.finishProgress ?? a.position.space;
-  const bProgress = b.finishProgress ?? b.position.space;
-  if (aProgress !== bProgress) return bProgress - aProgress;
+  // The final landing space is authoritative. `finishProgress` is retained
+  // for compatibility with saved states, but it can represent the first
+  // crossing before a later Boost or Slipstream movement in the same turn.
+  if (a.position.space !== b.position.space) return b.position.space - a.position.space;
   if (a.position.lane !== b.position.lane) return a.position.lane - b.position.lane;
   return a.seat - b.seat;
 }

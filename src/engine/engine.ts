@@ -152,10 +152,10 @@ function movePlayer(
     player.id,
   );
   if (player.position.space > state.track.finishSpace && destination > state.track.finishSpace) {
-    player.finishProgress = Math.max(
-      player.finishProgress ?? state.track.finishSpace,
-      player.position.space,
-    );
+    // Keep the finish marker synchronized with the actual final landing. A
+    // racer can cross the line, then Boost or Slipstream farther in the same
+    // reaction window.
+    player.finishProgress = player.position.space;
   }
   return { start, end: player.position.space };
 }
@@ -336,7 +336,8 @@ function finishPlayerTurn(state: GameState, random: RandomSource): void {
       // Keep the actual landing distance visible after the car crosses the line.
       // Finished cars no longer participate in blocking, so these post-finish
       // positions are safe to retain as the end-of-turn result.
-      space: candidate.finishProgress ?? candidate.position.space,
+      // Position is the source of truth for the end-of-turn finish tiebreak.
+      space: candidate.position.space,
       lane: candidate.position.lane,
     };
   });
@@ -579,7 +580,11 @@ export function applyGameAction(
       state.pending.movedSpace = boostMove.end;
       refreshCrossedCorners(state);
       state.pending.boostAvailable = false;
-      log(state, `${player.name} boosts for +${boostSpeed} speed.`, player.id);
+      log(
+        state,
+        `${player.name} boosts for +${boostSpeed} speed and moves to space ${player.position.space}.`,
+        player.id,
+      );
       openGearReaction(state);
       return state;
     }

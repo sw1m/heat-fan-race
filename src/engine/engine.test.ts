@@ -571,6 +571,44 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.players[1].played.map((card) => card.id)).toContain('adrenaline-boost');
   });
 
+  it('updates the recorded finish space after a post-crossing Boost', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 36, lane: 0 };
+    state.players[1].position = { space: -1, lane: 0 };
+    state.players[0].gear = 2;
+    state.players[0].engine = state.players[0].engine.slice(0, 1);
+    state.players[0].hand = [
+      { id: 'finish-boost-one', kind: 'BASIC', value: 3 },
+      { id: 'finish-boost-two', kind: 'BASIC', value: 3 },
+      { id: 'finish-boost-three', kind: 'BASIC', value: 3 },
+    ];
+    state.players[0].deck = [{ id: 'finish-boost-card', kind: 'BASIC', value: 2 }];
+    state.players[1].hand = [{ id: 'finish-boost-other', kind: 'BASIC', value: 1 }];
+    state = applyGameAction(
+      state,
+      {
+        type: 'SUBMIT_PLAN',
+        playerId: 'p1',
+        gear: 3,
+        cardIds: ['finish-boost-one', 'finish-boost-two', 'finish-boost-three'],
+      },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['finish-boost-other'] },
+      fixedRandom,
+    );
+    expect(state.players[0].position.space).toBe(45);
+    expect(state.players[0].finishProgress).toBe(45);
+
+    state = applyGameAction(state, { type: 'BOOST', playerId: 'p1' }, fixedRandom);
+
+    expect(state.players[0].position.space).toBe(47);
+    expect(state.players[0].finishProgress).toBe(47);
+    expect(state.log.some((entry) => entry.text.includes('moves to space 47'))).toBe(true);
+  });
+
   it('allows Adrenaline Cooldown to enable Boost in the same reaction window', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     state.players[0].position = { space: 3, lane: 0 };
@@ -869,5 +907,23 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.players[1].finishRank).toBeNull();
     expect(state.winnerId).toBe('p1');
     expect(finishSort(state.players[0], state.players[1])).toBeLessThan(0);
+  });
+
+  it('uses final landing space rather than an earlier crossing marker for finish ties', () => {
+    const state = createInitialGame(players.slice(0, 2), fixedRandom);
+    const earlierCrossing = {
+      ...state.players[0],
+      finished: true,
+      finishProgress: 45,
+      position: { space: 48, lane: 1 as const },
+    };
+    const fartherFinalSpace = {
+      ...state.players[1],
+      finished: true,
+      finishProgress: 48,
+      position: { space: 45, lane: 0 as const },
+    };
+
+    expect(finishSort(earlierCrossing, fartherFinalSpace)).toBeLessThan(0);
   });
 });

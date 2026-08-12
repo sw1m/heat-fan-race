@@ -100,11 +100,16 @@ test('can submit the first plan after starting a new local race from results', a
       finishRank: index + 1,
       finishProgress: 41 - index,
       finishRound: 1,
+      position: {
+        ...(player.position as { space: number; lane: number }),
+        space: 41 - index,
+      },
     }));
     window.localStorage.setItem(key, JSON.stringify(room));
   });
   await page.reload();
   await expect(page.getByText('CHECKERED FLAG')).toBeVisible();
+  await expect(page.getByText(/FINISH S41/).first()).toBeVisible();
   await page.getByRole('button', { name: 'REVIEW RACE' }).click();
   await expect(page.getByText('RACE REVIEW')).toBeVisible();
   await page.getByRole('button', { name: 'NEW RACE' }).click();

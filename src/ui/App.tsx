@@ -142,21 +142,17 @@ function cooldownUnavailableReason(
 
 type RacePositionPlayer = Pick<
   GameState['players'][number],
-  'position' | 'finished' | 'finishProgress' | 'finishRank' | 'finishRound' | 'seat'
+  'position' | 'finished' | 'finishRank' | 'finishRound' | 'seat'
 >;
 
-function finishDistance(game: GameState, player: RacePositionPlayer): number {
-  return Math.max(0, (player.finishProgress ?? player.position.space) - game.track.finishSpace);
-}
-
 function racePositionLabel(game: GameState, player: RacePositionPlayer): string {
-  return player.finished ? `FINISH +${finishDistance(game, player)}` : `S${player.position.space}`;
+  return player.finished ? `FINISH S${player.position.space}` : `S${player.position.space}`;
 }
 
 function compareRacePositions(left: RacePositionPlayer, right: RacePositionPlayer): number {
   return (
     (left.finishRank ?? 99) - (right.finishRank ?? 99) ||
-    (right.finishProgress ?? right.position.space) - (left.finishProgress ?? left.position.space) ||
+    right.position.space - left.position.space ||
     left.position.lane - right.position.lane ||
     left.seat - right.seat
   );
@@ -1616,7 +1612,7 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                       <span className="car-marker-wrap" title={player.name}>
                         <span className="car-distance">
                           {player.finished
-                            ? `FINISH +${finishDistance(game, player)}`
+                            ? `FINISH S${player.position.space}`
                             : player.position.space === game.track.finishSpace
                               ? 'ON FINISH MARKER'
                               : distanceToNextCorner(game.track, player.position.space) !== null
