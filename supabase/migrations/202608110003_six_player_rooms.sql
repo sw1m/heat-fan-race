@@ -10,7 +10,7 @@ language sql immutable as $$
   select lower(trim(p_color)) = any(
     array[
       '#d44735',
-      '#ee9a2f',
+      '#f2c230',
       '#245c8c',
       '#2f7a54',
       '#7b4d9e',

@@ -15,7 +15,7 @@ const bot = {
   id: 'bot',
   name: 'Bot 2',
   seat: 1,
-  color: '#ee9a2f',
+  color: '#f2c230',
   controller: 'BOT' as const,
 };
 const blockerA = {

@@ -1233,6 +1233,41 @@ h2 {
 .log-entry p {
   margin: 0;
 }
+.finish-progress-banner {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) minmax(240px, 1.2fr);
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #2b241e;
+  color: var(--cream);
+  border-left: 5px solid var(--yellow);
+}
+.finish-progress-flag {
+  font-size: 34px;
+}
+.finish-progress-copy {
+  display: grid;
+  gap: 3px;
+}
+.finish-progress-copy .eyebrow {
+  color: var(--yellow);
+}
+.finish-progress-copy span {
+  color: #c8b99e;
+  font-size: 11px;
+}
+.finish-progress-standings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 12px;
+  color: #d8c9ae;
+  font-size: 11px;
+}
+.finish-progress-standings b {
+  color: var(--yellow);
+}
 .finish-overlay {
   position: fixed;
   inset: 0;
@@ -1399,6 +1434,13 @@ h2 {
   .lobby-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .finish-progress-banner {
+    grid-template-columns: auto 1fr;
+  }
+  .finish-progress-standings {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 }
 @media (prefers-reduced-motion: reduce) {

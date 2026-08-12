@@ -18,7 +18,7 @@ const fixedRandom = () => 0.42;
 const players = [
   { id: 'p1', name: 'Red', seat: 0, color: '#d44735' },
   { id: 'p2', name: 'Blue', seat: 1, color: '#245c8c' },
-  { id: 'p3', name: 'Gold', seat: 2, color: '#ee9a2f' },
+  { id: 'p3', name: 'Yellow', seat: 2, color: '#f2c230' },
   { id: 'p4', name: 'Green', seat: 3, color: '#2f7a54' },
 ];
 const sixPlayers = [
@@ -581,8 +581,8 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
 
   it('does not offer Slipstream when two spaces would cross the finish line', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
-    state.players[0].position = { space: USA_BEGINNER_TRACK.finishSpace - 3, lane: 0 };
-    state.players[1].position = { space: USA_BEGINNER_TRACK.finishSpace - 2, lane: 1 };
+    state.players[0].position = { space: USA_BEGINNER_TRACK.finishSpace - 1, lane: 0 };
+    state.players[1].position = { space: USA_BEGINNER_TRACK.finishSpace, lane: 1 };
     state.players[0].hand = [{ id: 'finish-slip', kind: 'STARTING_ZERO', value: 0 }];
     state.players[1].hand = [{ id: 'finish-one', kind: 'BASIC', value: 1 }];
     state = applyGameAction(
@@ -647,7 +647,7 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     ).toThrow(/not this player/);
   });
 
-  it('marks a car finished when normal movement crosses the finish line', () => {
+  it('does not finish a car that lands on the painted finish space', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     state.players[0].position = { space: 39, lane: 0 };
     state.players[1].position = { space: -1, lane: 0 };
@@ -666,9 +666,36 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     state = pass(state, 'p1');
     state = pass(state, 'p2');
     if (state.phase === 'PLAYER_REACTION') state = pass(state, 'p2');
+    expect(state.players[0].finished).toBe(false);
+    expect(state.players[0].finishRank).toBeNull();
+    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace);
+  });
+
+  it('marks a car finished only after it lands beyond the painted finish space', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 39, lane: 0 };
+    state.players[1].position = { space: -1, lane: 0 };
+    state.players[0].hand = [{ id: 'finish-two', kind: 'BASIC', value: 2 }];
+    state.players[1].hand = [{ id: 'other-one', kind: 'BASIC', value: 1 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['finish-two'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['other-one'] },
+      fixedRandom,
+    );
+    state = pass(state, state.activePlayerId!);
+    state = pass(state, state.activePlayerId!);
+    while (state.phase === 'PLAYER_REACTION') state = pass(state, state.activePlayerId!);
+
     expect(state.players[0].finished).toBe(true);
     expect(state.players[0].finishRank).toBe(1);
-    expect(state.players[0].position.space).toBe(USA_BEGINNER_TRACK.finishSpace);
+    expect(state.players[0].position.space).toBe(41);
+    expect(state.winnerId).toBe('p1');
+    expect(state.phase).toBe('PLANNING');
   });
 
   it('retains the complete event log for race review', () => {
@@ -710,13 +737,13 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     state = pass(state, 'p2');
     state = pass(state, 'p1');
     state = pass(state, 'p1');
-    expect(state.phase).toBe('FINISHED');
+    expect(state.phase).toBe('PLANNING');
     expect(state.players[0].finishProgress).toBe(43);
-    expect(state.players[1].finishProgress).toBe(40);
+    expect(state.players[1].finishProgress).toBeNull();
     expect(state.players[0].position.space).toBe(43);
     expect(state.players[1].position.space).toBe(40);
     expect(state.players[0].finishRank).toBe(1);
-    expect(state.players[1].finishRank).toBe(2);
+    expect(state.players[1].finishRank).toBeNull();
     expect(state.winnerId).toBe('p1');
     expect(finishSort(state.players[0], state.players[1])).toBeLessThan(0);
   });

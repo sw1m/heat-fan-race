@@ -5,22 +5,15 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
 }) => {
   await page.goto('/');
   await page.getByLabel('Nickname').fill('Preview Driver');
-  await page.getByRole('button', { name: 'Blue car' }).click();
-  await expect(page.getByRole('button', { name: 'Blue car' })).toHaveAttribute(
+  await page.getByRole('button', { name: 'Yellow car' }).click();
+  await expect(page.getByRole('button', { name: 'Yellow car' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   await page.getByRole('button', { name: 'CREATE RACE' }).click();
   await expect(page.getByText('Choose your seat.')).toBeVisible();
-  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await page.getByRole('button', { name: 'FILL OPEN SLOTS WITH AI' }).click();
   await expect(page.getByText('Bot 2')).toBeVisible();
-  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
-  await expect(page.getByText('Bot 3')).toBeVisible();
-  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
-  await expect(page.getByText('Bot 4')).toBeVisible();
-  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
-  await expect(page.getByText('Bot 5')).toBeVisible();
-  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
   await expect(page.getByText('Bot 6')).toBeVisible();
   await expect(page.getByText('AI DRIVER · READY')).toHaveCount(5);
   await expect(page.locator('.room-share')).toBeVisible();

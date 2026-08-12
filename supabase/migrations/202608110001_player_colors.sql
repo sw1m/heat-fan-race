@@ -3,7 +3,7 @@
 
 create or replace function public.is_allowed_player_color(p_color text) returns boolean
 language sql immutable as $$
-  select lower(trim(p_color)) = any(array['#d44735', '#ee9a2f', '#245c8c', '#2f7a54']::text[]);
+  select lower(trim(p_color)) = any(array['#d44735', '#f2c230', '#245c8c', '#2f7a54']::text[]);
 $$;
 
 drop function if exists public.create_race_room(text, uuid);

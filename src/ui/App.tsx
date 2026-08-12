@@ -30,6 +30,7 @@ import {
   createLocalRoom,
   getLocalRoom,
   clearLocalRoom,
+  fillLocalBotSeats,
   startLocalRoom,
   type LocalRoom,
   setLocalRoom,
@@ -59,7 +60,7 @@ function roomPlayers(room: ActiveRoom): RoomPlayer[] {
 
 const CAR_COLOR_NAMES: Record<PlayerColor, string> = {
   '#d44735': 'Red',
-  '#ee9a2f': 'Orange',
+  '#f2c230': 'Yellow',
   '#245c8c': 'Blue',
   '#2f7a54': 'Green',
   '#7b4d9e': 'Purple',
@@ -72,7 +73,7 @@ function carColorName(color: string): string {
 
 const CAR_MARKER_FILTERS: Record<string, string> = {
   '#d44735': 'hue-rotate(0deg) saturate(1.25) contrast(1.08)',
-  '#ee9a2f': 'hue-rotate(42deg) saturate(1.35) brightness(1.05)',
+  '#f2c230': 'hue-rotate(58deg) saturate(1.4) brightness(1.12)',
   '#245c8c': 'hue-rotate(202deg) saturate(0.95)',
   '#2f7a54': 'hue-rotate(138deg) saturate(0.9)',
   '#7b4d9e': 'hue-rotate(274deg) saturate(1.15) brightness(0.95)',
@@ -338,6 +339,11 @@ export function App(): JSX.Element {
     setRoom(addLocalBotSeat(room));
   }, [room]);
 
+  const onFillAiSeats = useCallback(() => {
+    if (!room || isRemoteRoom(room)) return;
+    setRoom(fillLocalBotSeats(room));
+  }, [room]);
+
   const onAction = useCallback(
     async (action: GameAction) => {
       if (!room) return;
@@ -391,6 +397,7 @@ export function App(): JSX.Element {
       error={error}
       onStart={onStart}
       onAddBotSeat={onAddBotSeat}
+      onFillAiSeats={onFillAiSeats}
       onAction={onAction}
       isHost={
         room.hostPlayerId === identity || (!isRemoteRoom(room) && room.players[0]?.id === identity)
@@ -562,6 +569,7 @@ function RoomScreen({
   error,
   onStart,
   onAddBotSeat,
+  onFillAiSeats,
   onAction,
   isHost,
   onCopyInvite,
@@ -575,6 +583,7 @@ function RoomScreen({
   error: string;
   onStart: () => Promise<void>;
   onAddBotSeat: () => void;
+  onFillAiSeats: () => void;
   onAction: (action: GameAction) => Promise<void>;
   isHost: boolean;
   onCopyInvite: () => void;
@@ -613,6 +622,7 @@ function RoomScreen({
           isHost={isHost}
           onStart={onStart}
           onAddBotSeat={onAddBotSeat}
+          onFillAiSeats={onFillAiSeats}
           onLeave={onLeave}
         />
       ) : game ? (
@@ -637,6 +647,7 @@ function LobbyView({
   isHost,
   onStart,
   onAddBotSeat,
+  onFillAiSeats,
   onLeave,
 }: {
   room: ActiveRoom;
@@ -644,6 +655,7 @@ function LobbyView({
   isHost: boolean;
   onStart: () => Promise<void>;
   onAddBotSeat: () => void;
+  onFillAiSeats: () => void;
   onLeave: () => Promise<void>;
 }): JSX.Element {
   return (
@@ -694,9 +706,14 @@ function LobbyView({
             LEAVE ROOM
           </button>
           {!isRemoteRoom(room) && players.length < MAX_PLAYERS && (
-            <button className="secondary-button" onClick={onAddBotSeat}>
-              ADD AI PLAYER
-            </button>
+            <>
+              <button className="secondary-button" onClick={onFillAiSeats}>
+                FILL OPEN SLOTS WITH AI
+              </button>
+              <button className="secondary-button" onClick={onAddBotSeat}>
+                ADD AI PLAYER
+              </button>
+            </>
           )}
           {isHost && (
             <button
@@ -810,6 +827,9 @@ function RaceView({
         </button>
       </div>
       <TrackBoard game={game} />
+      {game.players.some((player) => player.finished) && game.phase !== 'FINISHED' && (
+        <FinishProgressBanner game={game} />
+      )}
       <div className="lower-grid">
         <aside className="panel standings-panel">
           <div className="panel-title">
@@ -1244,6 +1264,34 @@ function orderedTurnPlayers(game: GameState): GameState['players'] {
     );
 }
 
+function FinishProgressBanner({ game }: { game: GameState }): JSX.Element {
+  const first =
+    game.players.find((player) => player.id === game.winnerId) ??
+    game.players.find((player) => player.finished);
+  const ranked = [...game.players].sort(compareRacePositions);
+  return (
+    <section className="finish-progress-banner" aria-label="Finish progress">
+      <div className="finish-progress-flag">🏁</div>
+      <div className="finish-progress-copy">
+        <div className="eyebrow">{game.winnerId ? 'FIRST ACROSS' : 'FINISH LINE CROSSED'}</div>
+        <strong>{first?.name ?? 'A racer'} crossed the finish line.</strong>
+        <span>
+          {game.winnerId
+            ? 'The race continues. Keep playing to determine the remaining places.'
+            : 'The current turn is still resolving; the crossing group will be ranked at cleanup.'}
+        </span>
+      </div>
+      <div className="finish-progress-standings">
+        {ranked.map((player) => (
+          <span key={player.id}>
+            <b>{player.finishRank ?? '—'}.</b> {player.name}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
   const step = currentTurnStep(game.phase);
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
@@ -1368,7 +1416,7 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
             <span className="muted">TWO LANES · MAX TWO CARS PER SPACE</span>
           </div>
           <div className="track-legend">
-            <span>🏁 FINISH S40</span>
+            <span>🏁 FINISH LINE AFTER S40</span>
             {game.track.corners.map((corner) => (
               <span key={corner.id}>
                 ◼ {corner.label} <strong>{corner.speedLimit}</strong>
@@ -1410,9 +1458,11 @@ function TrackBoard({ game }: { game: GameState }): JSX.Element {
                         <span className="car-distance">
                           {player.finished
                             ? `FINISH +${finishDistance(game, player)}`
-                            : distanceToNextCorner(game.track, player.position.space) !== null
-                              ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
-                              : `TO FINISH ${game.track.finishSpace - player.position.space}`}
+                            : player.position.space === game.track.finishSpace
+                              ? 'ON FINISH MARKER'
+                              : distanceToNextCorner(game.track, player.position.space) !== null
+                                ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
+                                : `TO FINISH ${game.track.finishSpace - player.position.space}`}
                         </span>
                         <CarToken color={player.color} className="car-marker" />
                       </span>

@@ -4,12 +4,12 @@ The official basic rules identify the USA track as the recommended first track a
 
 The V1 functional starter circuit in `src/engine/constants.ts` uses 40 numbered spaces, two lanes, a six-space starting grid, and four data-driven corners:
 
-| Marker | Space | Limit |
-| ------ | ----: | ----: |
-| Turn 1 |    10 |     4 |
-| Turn 2 |    20 |     3 |
-| Turn 3 |    29 |     5 |
-| Turn 4 |    36 |     4 |
-| Finish |    40 |     — |
+| Marker                | Space | Limit |
+| --------------------- | ----: | ----: |
+| Turn 1                |    10 |     4 |
+| Turn 2                |    20 |     3 |
+| Turn 3                |    29 |     5 |
+| Turn 4                |    36 |     4 |
+| Painted finish marker |    40 |     — |
 
-These values are a short, playable approximation selected to exercise straightaways, multiple corners, blocked spaces, and a final sprint without importing or tracing official board art. Before an exact-fidelity release, compare this configuration to an owned physical USA board or an authorized machine-readable track reference and update the configuration plus its tests. No other track should be added until this data is verified.
+These values are a short, playable approximation selected to exercise straightaways, multiple corners, blocked spaces, and a final sprint without importing or tracing official board art. Space 40 is the painted finish marker; the engine treats spaces 41 and beyond as the first finish-line-crossing spaces so cars can remain visibly separated after the line. Before an exact-fidelity release, compare this configuration to an owned physical USA board or an authorized machine-readable track reference and update the configuration plus its tests. No other track should be added until this data is verified.

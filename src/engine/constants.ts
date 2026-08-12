@@ -2,7 +2,7 @@ import type { TrackConfig } from './types';
 
 export const PLAYER_COLORS = [
   '#d44735',
-  '#ee9a2f',
+  '#f2c230',
   '#245c8c',
   '#2f7a54',
   '#7b4d9e',

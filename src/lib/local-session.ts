@@ -82,6 +82,12 @@ export function addLocalBotSeat(room: LocalRoom): LocalRoom {
   return next;
 }
 
+export function fillLocalBotSeats(room: LocalRoom): LocalRoom {
+  let next = room;
+  while (next.players.length < MAX_PLAYERS) next = addLocalBotSeat(next);
+  return next;
+}
+
 export function startLocalRoom(room: LocalRoom): LocalRoom {
   if (room.players.length < 2) throw new Error('At least two racers are needed to start.');
   const game = createInitialGame(

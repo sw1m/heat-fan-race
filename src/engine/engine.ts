@@ -85,7 +85,8 @@ function isBasicSpeed(card: Card): boolean {
 
 function canSlipstream(state: GameState, player: PlayerState): boolean {
   return (
-    isAdjacentOrBehind(state.players, player) && player.position.space + 2 < state.track.finishSpace
+    isAdjacentOrBehind(state.players, player) &&
+    player.position.space + 2 <= state.track.finishSpace
   );
 }
 
@@ -145,8 +146,11 @@ function movePlayer(
     state.track,
     player.id,
   );
-  if (player.position.space >= state.track.finishSpace && destination >= state.track.finishSpace) {
-    player.finishProgress = Math.max(player.finishProgress ?? state.track.finishSpace, destination);
+  if (player.position.space > state.track.finishSpace && destination > state.track.finishSpace) {
+    player.finishProgress = Math.max(
+      player.finishProgress ?? state.track.finishSpace,
+      player.position.space,
+    );
   }
   return { start, end: player.position.space };
 }
@@ -281,7 +285,7 @@ function applyCornerChecks(
     );
     break;
   }
-  player.finished = player.position.space >= state.track.finishSpace;
+  player.finished = player.position.space > state.track.finishSpace;
   if (player.finished) {
     player.finishProgress ??= player.position.space;
     log(state, `${player.name} crosses the finish line.`, player.id);
@@ -327,14 +331,18 @@ function finishPlayerTurn(state: GameState, random: RandomSource): void {
   });
   if (state.winnerId === null && justFinished.length > 0) {
     state.winnerId = justFinished[0].id;
-    state.phase = 'FINISHED';
-    state.activePlayerId = null;
     log(
       state,
-      `${justFinished[0].name} wins. The turn is complete; remaining cars are shown where they landed.`,
+      `${justFinished[0].name} is first after the finish-line tie-break. The race continues for the remaining places.`,
       justFinished[0].id,
     );
-    return;
+  }
+  const laterFinishers = justFinished.filter((candidate) => candidate.id !== state.winnerId);
+  if (laterFinishers.length > 0) {
+    log(
+      state,
+      `${laterFinishers.map((candidate) => candidate.name).join(', ')} finish${laterFinishers.length === 1 ? 'es' : ''}; the race continues for the remaining places.`,
+    );
   }
   if (state.players.every((candidate) => candidate.finished)) {
     state.winnerId ??= [...state.players].sort(finishSort)[0]?.id ?? null;
@@ -583,7 +591,7 @@ export function applyGameAction(
         !state.pending.slipstreamAvailable
       )
         throw new Error('Slipstream is unavailable.');
-      if (player.position.space + 2 >= state.track.finishSpace)
+      if (player.position.space + 2 > state.track.finishSpace)
         throw new Error('Slipstream cannot cross the finish line.');
       movePlayer(state, player, 2);
       state.pending.movedSpace = player.position.space;

@@ -27,7 +27,9 @@ export function chooseLandingPosition(
 ): CarPosition {
   const distance = Math.max(0, movement);
   if (distance === 0) return current;
-  const desired = Math.min(track.finishSpace, current.space + distance);
+  // The finish marker is still a track space. A car finishes only after
+  // landing in a post-finish space beyond the line.
+  const desired = current.space + distance;
   let space = desired;
   while (space > current.space && !isSpaceOpen(players, space, playerId)) space -= 1;
   if (space === current.space) return current;

@@ -16,7 +16,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Without Supabase values, the app runs in local preview mode. That mode is useful for checking the UI and engine but cannot make a room visible to another computer. Add valid Supabase values for shared rooms.
+Without Supabase values, the app runs in local preview mode. That mode is useful for checking the UI and engine, including the lobby’s **Fill open slots with AI** control, but cannot make a room visible to another computer. Add valid Supabase values for shared rooms.
 
 Useful checks:
 
