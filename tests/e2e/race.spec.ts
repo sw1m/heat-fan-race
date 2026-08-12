@@ -75,6 +75,46 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   await expect(page.getByText('ENTER THE PADDOCK')).toBeVisible();
 });
 
+test('can submit the first plan after starting a new local race from results', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Nickname').fill('Restart Tester');
+  await page.getByRole('button', { name: 'CREATE RACE' }).click();
+  await page.getByRole('button', { name: 'ADD AI PLAYER' }).click();
+  await page.getByRole('button', { name: 'START RACE' }).click();
+  await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
+
+  await page.evaluate(() => {
+    const key = 'heat-fan-local-room';
+    const raw = window.localStorage.getItem(key);
+    if (!raw) throw new Error('Local room was not persisted.');
+    const room = JSON.parse(raw) as {
+      status: string;
+      game: { phase: string; winnerId: string | null; players: Array<Record<string, unknown>> };
+    };
+    room.status = 'FINISHED';
+    room.game.phase = 'FINISHED';
+    room.game.winnerId = String(room.game.players[0].id);
+    room.game.players = room.game.players.map((player, index) => ({
+      ...player,
+      finished: true,
+      finishRank: index + 1,
+      finishProgress: 41 - index,
+      finishRound: 1,
+    }));
+    window.localStorage.setItem(key, JSON.stringify(room));
+  });
+  await page.reload();
+  await expect(page.getByText('CHECKERED FLAG')).toBeVisible();
+  await page.getByRole('button', { name: 'NEW RACE' }).click();
+  await expect(page.getByText('ROUND 1')).toBeVisible();
+
+  await page.locator('.hand-panel .card-number').first().click();
+  const lockButton = page.getByRole('button', { name: 'LOCK IN PLAN' });
+  await expect(lockButton).toBeEnabled();
+  await lockButton.click();
+  await expect(page.getByText('PLAYER REACTION', { exact: true })).toBeVisible();
+});
+
 test('two browser contexts can create, join, start, and observe a synchronized room when Supabase is configured', async ({
   browser,
 }) => {

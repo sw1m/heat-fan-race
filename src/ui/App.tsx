@@ -844,6 +844,12 @@ function RaceView({
     setDiscardSelection([]);
   }, [game.round, local.gear, pending?.playerId]);
   useEffect(() => {
+    // A finished race and its replacement can both begin in round 1 with the
+    // same gear. Clear card selection from the old hand by identity, rather
+    // than relying on the round/gear effect above to notice a new race.
+    setSelected([]);
+  }, [handIdsKey]);
+  useEffect(() => {
     setManualOrder((current) => reconcileCardOrder(current, local.hand));
     setDiscardSelection((current) =>
       current.filter((cardId) => local.hand.some((card) => card.id === cardId)),
@@ -852,6 +858,17 @@ function RaceView({
   useEffect(() => {
     if (game.phase !== 'FINISHED') setReviewedFinish(false);
   }, [game.phase]);
+  useEffect(() => {
+    // Starting a new race can keep this component mounted. Planning is the
+    // authoritative boundary for a fresh card choice, including FINISHED →
+    // PLANNING when the host clicks NEW RACE.
+    if (game.phase === 'PLANNING') {
+      setGear(local.gear);
+      setSelected([]);
+      setDiscardSelection([]);
+      setDraggingCardId(null);
+    }
+  }, [game.phase, local.gear]);
   const active = game.activePlayerId === local.id;
   const publicState = getPublicState(game, local.id);
   const currentPublic = publicState.players.find((player) => player.id === local.id);
