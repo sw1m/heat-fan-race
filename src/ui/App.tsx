@@ -1560,6 +1560,40 @@ function TurnOrderGraphic({ game }: { game: GameState }): JSX.Element {
   );
 }
 
+type TrackCrossSection = {
+  centerX: number;
+  centerY: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
+
+function trackCrossSection(
+  track: GameState['track'],
+  space: number,
+  halfWidth = 6.1,
+): TrackCrossSection | null {
+  const inside = visualTrackPosition(track, space, 0);
+  const outside = visualTrackPosition(track, space, 1);
+  if (!inside || !outside) return null;
+  const centerX = (inside.x + outside.x) / 2;
+  const centerY = (inside.y + outside.y) / 2;
+  const dx = outside.x - inside.x;
+  const dy = outside.y - inside.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const normalX = dx / length;
+  const normalY = dy / length;
+  return {
+    centerX,
+    centerY,
+    x1: centerX - normalX * halfWidth,
+    y1: centerY - normalY * halfWidth,
+    x2: centerX + normalX * halfWidth,
+    y2: centerY + normalY * halfWidth,
+  };
+}
+
 function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
   const track = { ...game.track, visual: game.track.visual ?? USA_TRACK_VISUAL };
   const startingSpace = Math.min(0, ...game.track.grid.map((position) => position.space));
@@ -1567,12 +1601,24 @@ function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
     game.track.finishSpace + game.players.length,
     ...game.players.map((player) => player.position.space),
   );
-  const trackSpaces = Array.from(
-    { length: furthestVisibleSpace - startingSpace + 1 },
-    (_, index) => startingSpace + index,
+  const boundaries = Array.from(
+    { length: furthestVisibleSpace - startingSpace + 2 },
+    (_, index) => startingSpace - 0.5 + index,
   );
-  const pathPoints = track.visual.centerline.map((point) => `${point.x},${point.y}`).join(' ');
-  const finishPoint = visualTrackPosition(track, game.track.finishSpace - 0.5, 0);
+  const routeSamples = Array.from(
+    { length: (furthestVisibleSpace - startingSpace + 1) * 2 + 1 },
+    (_, index) => startingSpace - 0.5 + index / 2,
+  );
+  const pathPoints = routeSamples
+    .map((space) => trackCrossSection(track, space))
+    .filter((section): section is TrackCrossSection => Boolean(section))
+    .map((section) => `${section.centerX},${section.centerY}`)
+    .join(' ');
+  const numberedSpaces = Array.from(
+    { length: Math.floor(game.track.finishSpace / 5) },
+    (_, index) => (index + 1) * 5,
+  );
+  const finishLine = trackCrossSection(track, game.track.finishSpace + 0.5);
 
   return (
     <section className="track-panel panel">
@@ -1604,59 +1650,118 @@ function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
       </div>
       <div className="track-scroll">
         <div className="track-map" aria-label="Simplified USA two-lane track map">
-          <svg className="track-course-art" viewBox="0 0 100 100" aria-hidden="true">
+          <svg
+            className="track-course-art"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
             <polyline className="track-shoulder" points={pathPoints} />
             <polyline className="track-road" points={pathPoints} />
-            <polyline className="track-center-dash" points={pathPoints} />
-          </svg>
-          {trackSpaces.map((space) =>
-            [0, 1].map((lane) => {
-              const point = visualTrackPosition(track, space, lane as 0 | 1);
-              if (!point) return null;
-              const lanePlayers = game.players.filter(
-                (player) => player.position.space === space && player.position.lane === lane,
-              );
-              const isFinish = space === game.track.finishSpace;
+            {boundaries.map((boundary) => {
+              const section = trackCrossSection(track, boundary, 5.8);
+              if (!section) return null;
+              const nextSpace = Math.ceil(boundary);
               return (
-                <div
-                  className={`track-map-space ${space < 0 ? 'starting-space' : ''} ${isFinish ? 'finish-space' : ''} ${space > game.track.finishSpace ? 'post-finish-space' : ''}`}
-                  key={`${space}-${lane}`}
-                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
-                  title={`Space ${space}, ${lane === 0 ? 'race line' : 'outside lane'}`}
-                >
-                  {lanePlayers.map((player) => (
-                    <span className="car-marker-wrap" title={player.name} key={player.id}>
-                      <span className="car-distance">
-                        {player.finished
-                          ? `FINISH S${player.position.space}`
-                          : player.position.space === game.track.finishSpace
-                            ? 'ON FINISH MARKER'
-                            : distanceToNextCorner(game.track, player.position.space) !== null
-                              ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
-                              : `TO FINISH ${game.track.finishSpace - player.position.space}`}
-                      </span>
-                      <CarToken color={player.color} className="car-marker" />
-                    </span>
-                  ))}
-                  <small>
-                    {space < 0
-                      ? 'GRID'
-                      : space > game.track.finishSpace || space % 5 === 0
-                        ? space
-                        : ''}
-                  </small>
-                </div>
+                <line
+                  className={`track-space-divider ${nextSpace % 5 === 0 ? 'major' : ''} ${nextSpace <= 0 ? 'grid-divider' : ''}`}
+                  key={boundary}
+                  x1={section.x1}
+                  y1={section.y1}
+                  x2={section.x2}
+                  y2={section.y2}
+                />
               );
-            }),
-          )}
-          {game.track.corners.map((corner) => {
-            const point = visualTrackPosition(track, corner.lineSpace - 0.5, 0);
+            })}
+            <polyline className="track-center-dash" points={pathPoints} />
+            {game.track.corners.map((corner) => {
+              const section = trackCrossSection(track, corner.lineSpace - 0.5, 6.4);
+              if (!section) return null;
+              return (
+                <line
+                  className="track-corner-line"
+                  key={corner.id}
+                  x1={section.x1}
+                  y1={section.y1}
+                  x2={section.x2}
+                  y2={section.y2}
+                />
+              );
+            })}
+            {finishLine && (
+              <>
+                <line
+                  className="track-finish-line"
+                  x1={finishLine.x1}
+                  y1={finishLine.y1}
+                  x2={finishLine.x2}
+                  y2={finishLine.y2}
+                />
+                <line
+                  className="track-finish-checks"
+                  x1={finishLine.x1}
+                  y1={finishLine.y1}
+                  x2={finishLine.x2}
+                  y2={finishLine.y2}
+                />
+              </>
+            )}
+          </svg>
+          {numberedSpaces.map((space) => {
+            const section = trackCrossSection(track, space, 7.4);
+            if (!section) return null;
+            return (
+              <span
+                className="track-space-number"
+                key={space}
+                style={{ left: `${section.x2}%`, top: `${section.y2}%` }}
+              >
+                {space}
+              </span>
+            );
+          })}
+          {game.players.map((player) => {
+            const point = visualTrackPosition(track, player.position.space, player.position.lane);
             if (!point) return null;
+            const upcoming = nextCorner(game.track, player.position.space);
+            const cornerDistance = distanceToNextCorner(game.track, player.position.space);
+            const distanceLabel = player.finished
+              ? `+${Math.max(0, player.position.space - game.track.finishSpace)}`
+              : cornerDistance !== null
+                ? String(cornerDistance)
+                : `F${Math.max(0, game.track.finishSpace - player.position.space)}`;
+            const distanceDescription = player.finished
+              ? `${Math.max(0, player.position.space - game.track.finishSpace)} spaces past the finish line`
+              : cornerDistance !== null
+                ? `${cornerDistance} spaces to ${upcoming?.label ?? 'the next corner'}`
+                : `${Math.max(0, game.track.finishSpace - player.position.space)} spaces to the finish line`;
+            return (
+              <div
+                className={`track-car-position ${player.finished ? 'finished' : ''}`}
+                key={player.id}
+                style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                title={`${player.name}: space ${player.position.space}`}
+              >
+                <span className="car-marker-wrap">
+                  <span className="car-distance" title={distanceDescription}>
+                    {distanceLabel}
+                  </span>
+                  <CarToken color={player.color} className="car-marker" />
+                </span>
+                {(player.position.space > 0 || player.finished) && (
+                  <small>S{player.position.space}</small>
+                )}
+              </div>
+            );
+          })}
+          {game.track.corners.map((corner) => {
+            const section = trackCrossSection(track, corner.lineSpace - 0.5, 8);
+            if (!section) return null;
             return (
               <div
                 className="track-corner-marker"
                 key={corner.id}
-                style={{ left: `${point.x}%`, top: `${point.y - 3}%` }}
+                style={{ left: `${section.x2}%`, top: `${section.y2}%` }}
                 title={`${corner.label}: speed limit ${corner.speedLimit}`}
               >
                 <span>{corner.label.replace('Turn ', 'T')}</span>
@@ -1664,17 +1769,18 @@ function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
               </div>
             );
           })}
-          {finishPoint && (
+          {finishLine && (
             <div
               className="track-finish-marker"
-              style={{ left: `${finishPoint.x}%`, top: `${finishPoint.y}%` }}
+              style={{ left: `${finishLine.x2}%`, top: `${finishLine.y2}%` }}
             >
               <span>🏁</span>
               <strong>FINISH</strong>
             </div>
           )}
-          <span className="track-lane-key race-line-key">RACE LINE</span>
-          <span className="track-lane-key outside-key">OUTSIDE</span>
+          <span className="track-map-note">
+            CAR BADGE = SPACES TO NEXT CORNER · THIN LINES = SPACES
+          </span>
         </div>
       </div>
     </section>
@@ -1683,95 +1789,4 @@ function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
 
 function TrackBoard({ game }: { game: GameState }): JSX.Element {
   return <TrackMapBoard game={game} />;
-  /*
-  const positions = new Map(
-    game.players.map((player) => [`${player.position.space}-${player.position.lane}`, player]),
-  );
-  const startingSpace = Math.min(0, ...game.track.grid.map((position) => position.space));
-  const furthestVisibleSpace = Math.max(
-    game.track.finishSpace + game.players.length,
-    ...game.players.map((player) => player.position.space),
-  );
-  const trackSpaces = Array.from(
-    { length: furthestVisibleSpace - startingSpace + 1 },
-    (_, index) => startingSpace + index,
-  );
-  return (
-    <section className="track-panel panel">
-      <TurnOrderGraphic game={game} />
-      <div className="track-head">
-        <div>
-          <div className="panel-title">
-            <span>USA STARTER CIRCUIT</span>
-            <span className="muted">TWO LANES · MAX TWO CARS PER SPACE</span>
-          </div>
-          <div className="track-legend">
-            <span>🏁 FINISH LINE AFTER S40</span>
-            {game.track.corners.map((corner) => (
-              <span key={corner.id}>
-                ◼ {corner.label} <strong>{corner.speedLimit}</strong>
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="corner-next">
-          {game.track.corners.find(
-            (corner) =>
-              corner.lineSpace >
-              (game.players.find((player) => !player.finished)?.position.space ?? 0),
-          )
-            ? `NEXT LIMIT ${game.track.corners.find((corner) => corner.lineSpace > (game.players.find((player) => !player.finished)?.position.space ?? 0))?.speedLimit}`
-            : 'FINAL STRAIGHT'}
-        </div>
-      </div>
-      <div className="track-scroll">
-        <div
-          className="track-grid"
-          style={{ '--track-space-count': trackSpaces.length } as CSSProperties}
-        >
-          {[0, 1].map((lane) => (
-            <div className="track-lane" key={lane}>
-              <div className="lane-label">{lane === 0 ? 'RACE LINE' : 'OUTSIDE'}</div>
-              {trackSpaces.map((space) => {
-                const player = positions.get(`${space}-${lane}`);
-                const corner = game.track.corners.find(
-                  (candidate) => candidate.lineSpace === space,
-                );
-                return (
-                  <div
-                    className={`track-space ${space < 0 ? 'starting-space' : ''} ${corner ? 'corner-space' : ''} ${space === game.track.finishSpace ? 'finish-space' : ''} ${space > game.track.finishSpace ? 'post-finish-space' : ''}`}
-                    key={space}
-                  >
-                    {corner && <span className="corner-marker">{corner.speedLimit}</span>}
-                    {player && (
-                      <span className="car-marker-wrap" title={player.name}>
-                        <span className="car-distance">
-                          {player.finished
-                            ? `FINISH S${player.position.space}`
-                            : player.position.space === game.track.finishSpace
-                              ? 'ON FINISH MARKER'
-                              : distanceToNextCorner(game.track, player.position.space) !== null
-                                ? `${distanceToNextCorner(game.track, player.position.space)} TO ${nextCorner(game.track, player.position.space)?.label.replace('Turn ', 'T')}`
-                                : `TO FINISH ${game.track.finishSpace - player.position.space}`}
-                        </span>
-                        <CarToken color={player.color} className="car-marker" />
-                      </span>
-                    )}
-                    {space < 0 ? (
-                      <small>GRID</small>
-                    ) : space > game.track.finishSpace ? (
-                      <small>{space}</small>
-                    ) : (
-                      space % 5 === 0 && <small>{space}</small>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-  */
 }
