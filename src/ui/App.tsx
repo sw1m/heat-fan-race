@@ -1782,7 +1782,7 @@ function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
             </div>
           )}
           <span className="track-map-note">
-            CAR BADGE = SPACES TO NEXT CORNER · THIN LINES = SPACES
+            SNAKE BOARD · CAR BADGE = NEXT CORNER DISTANCE · THIN LINES = SPACES
           </span>
         </div>
       </div>

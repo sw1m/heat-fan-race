@@ -11,30 +11,24 @@ export const PLAYER_COLORS = [
 export type PlayerColor = (typeof PLAYER_COLORS)[number];
 
 /**
- * An intentionally geometric, image-free top-down course sketch. The engine
- * uses the numbered track data below; this presentation path is only a clean
- * visual guide and is not intended to reproduce the physical board.
+ * An intentionally geometric, image-free top-down course sketch. The route is
+ * an open snake so every numbered space is visible without making the course
+ * loop back onto itself. The engine uses the numbered track data below; this
+ * presentation path is only a clean visual guide.
  */
 export const USA_TRACK_VISUAL: TrackVisualConfig = {
   laneGap: 3.6,
   centerline: [
-    { x: 18, y: 82 },
-    { x: 11, y: 74 },
-    { x: 11, y: 61 },
-    { x: 21, y: 51 },
-    { x: 34, y: 51 },
-    { x: 41, y: 42 },
-    { x: 41, y: 26 },
-    { x: 51, y: 14 },
-    { x: 68, y: 10 },
-    { x: 84, y: 14 },
-    { x: 93, y: 27 },
-    { x: 93, y: 64 },
-    { x: 83, y: 77 },
-    { x: 68, y: 82 },
-    { x: 49, y: 82 },
-    { x: 31, y: 82 },
-    { x: 18, y: 82 },
+    { x: 8, y: 86 },
+    { x: 92, y: 86 },
+    { x: 92, y: 68 },
+    { x: 8, y: 68 },
+    { x: 8, y: 50 },
+    { x: 92, y: 50 },
+    { x: 92, y: 32 },
+    { x: 8, y: 32 },
+    { x: 8, y: 14 },
+    { x: 92, y: 14 },
   ],
 };
 

@@ -24,9 +24,9 @@ beyond the painted finish marker, so post-finish spaces remain visible for
 same-turn distance tie breaks.
 
 The `visual.centerline` in `src/engine/constants.ts` is now an intentionally
-geometric top-down sketch made from clean straight segments and angled
-transitions. It is a presentation aid only; it does not claim to reproduce the
-physical board. The supplied photograph does not expose enough resolution to
+geometric top-down snake made from five long horizontal runs and alternating
+end connectors. It is a presentation aid only; it does not claim to reproduce
+the physical board. The supplied photograph does not expose enough resolution to
 prove every numbered lane cell, exact grid offset, or the exact pixel position
 of each corner line. Verify those values against an owned physical board or an
 authorized machine-readable track reference before calling this exact-fidelity
