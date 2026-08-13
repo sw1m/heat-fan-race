@@ -11,36 +11,30 @@ export const PLAYER_COLORS = [
 export type PlayerColor = (typeof PLAYER_COLORS)[number];
 
 /**
- * A neutral, image-free drawing of the USA course supplied from the player's
- * board reference. It preserves the long lower straight, wide right-hand
- * sweep, upper bend, and tight left-side return without copying board art.
+ * An intentionally geometric, image-free top-down course sketch. The engine
+ * uses the numbered track data below; this presentation path is only a clean
+ * visual guide and is not intended to reproduce the physical board.
  */
 export const USA_TRACK_VISUAL: TrackVisualConfig = {
-  laneGap: 3.4,
+  laneGap: 3.6,
   centerline: [
-    { x: 15, y: 80 },
-    { x: 10, y: 72 },
-    { x: 10, y: 62 },
-    { x: 15, y: 53 },
-    { x: 24, y: 47 },
-    { x: 32, y: 44 },
-    { x: 37, y: 38 },
-    { x: 37, y: 28 },
-    { x: 34, y: 19 },
-    { x: 38, y: 12 },
-    { x: 47, y: 9 },
-    { x: 60, y: 10 },
-    { x: 72, y: 14 },
-    { x: 81, y: 23 },
-    { x: 87, y: 35 },
-    { x: 89, y: 49 },
-    { x: 87, y: 63 },
-    { x: 80, y: 73 },
-    { x: 67, y: 79 },
-    { x: 51, y: 82 },
-    { x: 34, y: 82 },
-    { x: 22, y: 81 },
-    { x: 15, y: 80 },
+    { x: 18, y: 82 },
+    { x: 11, y: 74 },
+    { x: 11, y: 61 },
+    { x: 21, y: 51 },
+    { x: 34, y: 51 },
+    { x: 41, y: 42 },
+    { x: 41, y: 26 },
+    { x: 51, y: 14 },
+    { x: 68, y: 10 },
+    { x: 84, y: 14 },
+    { x: 93, y: 27 },
+    { x: 93, y: 64 },
+    { x: 83, y: 77 },
+    { x: 68, y: 82 },
+    { x: 49, y: 82 },
+    { x: 31, y: 82 },
+    { x: 18, y: 82 },
   ],
 };
 

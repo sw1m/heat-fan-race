@@ -1595,7 +1595,9 @@ function trackCrossSection(
 }
 
 function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
-  const track = { ...game.track, visual: game.track.visual ?? USA_TRACK_VISUAL };
+  // Visual geometry is presentation data. Always use the current V1 sketch so
+  // a room saved before a visual refresh does not keep rendering old artwork.
+  const track = { ...game.track, visual: USA_TRACK_VISUAL };
   const startingSpace = Math.min(0, ...game.track.grid.map((position) => position.space));
   const furthestVisibleSpace = Math.max(
     game.track.finishSpace + game.players.length,
@@ -1654,6 +1656,7 @@ function TrackMapBoard({ game }: { game: GameState }): JSX.Element {
             className="track-course-art"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
+            shapeRendering="geometricPrecision"
             aria-hidden="true"
           >
             <polyline className="track-shoulder" points={pathPoints} />

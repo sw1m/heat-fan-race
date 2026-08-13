@@ -23,15 +23,14 @@ marker is visually between landing spaces. A car finishes only after landing
 beyond the painted finish marker, so post-finish spaces remain visible for
 same-turn distance tie breaks.
 
-The `visual.centerline` in `src/engine/constants.ts` is a hand-calibrated,
-image-free approximation of the photograph's layout: the lower straight,
-right-hand sweep, upper bend, and tight left return are represented as a
-two-lane route. The supplied photograph does not expose enough resolution to
+The `visual.centerline` in `src/engine/constants.ts` is now an intentionally
+geometric top-down sketch made from clean straight segments and angled
+transitions. It is a presentation aid only; it does not claim to reproduce the
+physical board. The supplied photograph does not expose enough resolution to
 prove every numbered lane cell, exact grid offset, or the exact pixel position
-of each corner line. Those values remain explicitly calibrated data rather
-than a claim of official board transcription. Verify them against an owned
-physical board or an authorized machine-readable track reference before
-calling this exact-fidelity data.
+of each corner line. Verify those values against an owned physical board or an
+authorized machine-readable track reference before calling this exact-fidelity
+data.
 
 The six course Heat slots are separate from the seven Heat cards in the
 starter deck. See `docs/rules-implementation.md` for the Heat accounting.
