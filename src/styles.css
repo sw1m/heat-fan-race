@@ -29,6 +29,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
   background: radial-gradient(circle at 20% 0%, #3b2a1d 0, #171412 42%, #0f0e0e 100%);
 }
 button,
@@ -1567,23 +1568,38 @@ h2 {
   .lower-grid {
     grid-template-columns: 1fr;
   }
+  .track-head {
+    flex-direction: column;
+  }
+  .corner-next {
+    align-self: flex-start;
+  }
 }
 @media (max-width: 620px) {
   .page-shell {
     width: min(100% - 24px, 1320px);
   }
   .topbar {
-    padding: 0 12px;
-    gap: 10px;
+    min-height: 66px;
+    padding: 9px 12px;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+  }
+  .brand-lockup {
+    flex: 1 1 auto;
+    min-width: 118px;
   }
   .room-share {
     gap: 5px;
+    margin-left: auto;
   }
   .room-share .tiny-button {
     display: none;
   }
   .connection {
+    flex: 0 0 100%;
     font-size: 8px;
+    text-align: right;
   }
   .lobby-card {
     padding: 22px 18px;
@@ -1604,6 +1620,81 @@ h2 {
   .race-statusbar .tiny-button {
     grid-column: 2;
     grid-row: 1;
+  }
+  .turn-order-graphic {
+    padding: 10px;
+  }
+  .turn-step-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .turn-order-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .turn-order-label {
+    flex-basis: auto;
+    padding-top: 0;
+  }
+  .resolution-order,
+  .corner-progress {
+    width: 100%;
+  }
+  .track-panel {
+    padding: 12px;
+  }
+  .track-panel .panel-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .track-legend {
+    gap: 7px 10px;
+    font-size: 8px;
+  }
+  .track-scroll {
+    overflow-x: visible;
+  }
+  .track-map {
+    min-width: 0;
+    width: 100%;
+    height: min(118vw, 470px);
+    min-height: 350px;
+    margin-top: 14px;
+  }
+  .track-space-number {
+    width: 18px;
+    height: 18px;
+    font-size: 7px;
+  }
+  .track-car-position {
+    width: 28px;
+    height: 21px;
+  }
+  .track-car-position .car-marker {
+    width: 25px;
+  }
+  .track-car-position small {
+    font-size: 6px;
+  }
+  .track-corner-marker {
+    gap: 3px;
+    padding: 3px 4px;
+    font-size: 7px;
+  }
+  .track-corner-marker strong {
+    font-size: 11px;
+  }
+  .track-finish-marker {
+    padding: 4px 5px;
+    font-size: 7px;
+  }
+  .track-finish-marker span {
+    font-size: 13px;
+  }
+  .track-map-note {
+    max-width: calc(100% - 24px);
+    font-size: 6px;
+    letter-spacing: 0.06em;
   }
   .metrics {
     grid-template-columns: repeat(2, 1fr);
@@ -1626,10 +1717,62 @@ h2 {
   .gear-picker {
     align-items: flex-start;
     flex-direction: column;
+    gap: 8px;
+  }
+  .gear-picker .helper-text {
+    line-height: 1.35;
+  }
+  .hand-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .hand-row {
+    gap: 6px;
+  }
+  .card {
+    width: calc((100% - 12px) / 3);
+    min-height: 104px;
+  }
+  .played-card-tray {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .played-card-list {
+    justify-content: flex-start;
+  }
+  .lock-button {
+    width: 100%;
+    margin-top: 12px;
   }
   .reaction-title span {
     display: block;
     margin: 6px 0 0;
+  }
+  .reaction-panel {
+    padding: 13px;
+  }
+  .reaction-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .reaction-actions .action-button {
+    min-height: 42px;
+    padding: 9px 8px;
+  }
+  .log-group summary {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 5px;
+  }
+  .log-group summary > span:first-of-type {
+    display: none;
+  }
+  .log-group-details {
+    padding-left: 20px;
+  }
+  .log-entry {
+    grid-template-columns: 20px 1fr;
+    font-size: 10px;
   }
   .finish-review-bar {
     align-items: flex-start;
@@ -1645,6 +1788,12 @@ h2 {
   .finish-progress-standings {
     grid-column: 1 / -1;
     justify-content: flex-start;
+  }
+  .finish-card {
+    padding: 24px 18px;
+  }
+  .finish-card h2 {
+    font-size: 34px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

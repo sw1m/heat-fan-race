@@ -177,6 +177,36 @@ test('can restart after reviewing an actually completed local race', async ({ pa
   await expect(page.getByText('PLAYER REACTION', { exact: true })).toBeVisible();
 });
 
+test.describe('mobile layout', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true });
+
+  test('keeps the race table and controls inside a phone viewport', async ({ page }) => {
+    await page.goto('/?fresh=mobile-layout');
+    await page.getByLabel('Nickname').fill('Mobile Tester');
+    await page.getByRole('button', { name: 'CREATE RACE' }).click();
+    await page.getByRole('button', { name: 'FILL OPEN SLOTS WITH AI' }).click();
+    await page.getByRole('button', { name: 'START RACE' }).click();
+
+    await expect(page.getByText('USA STARTER CIRCUIT')).toBeVisible();
+    await expect(page.getByText('YOUR DASHBOARD')).toBeVisible();
+
+    const viewport = await page.evaluate(() => ({
+      width: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.width);
+
+    const track = await page.locator('.track-map').boundingBox();
+    expect(track).not.toBeNull();
+    expect(track?.width ?? Infinity).toBeLessThanOrEqual(viewport.width);
+
+    await page.locator('.hand-panel').scrollIntoViewIfNeeded();
+    await expect(page.getByRole('button', { name: 'NUMERICAL' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'LOCK IN PLAN' })).toBeVisible();
+    await expect(page.locator('.log-panel')).toBeVisible();
+  });
+});
+
 test('two browser contexts can create, join, start, and observe a synchronized room when Supabase is configured', async ({
   browser,
 }) => {
