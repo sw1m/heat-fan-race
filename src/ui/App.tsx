@@ -711,7 +711,11 @@ function RoomScreen({
               : (room.raceId ?? 'local-race')
           }
           game={game}
-          localPlayerId={identity}
+          localPlayerId={
+            isRemoteRoom(room)
+              ? (room.players.find((player) => player.isMe)?.id ?? identity)
+              : identity
+          }
           onAction={onAction}
           onLeave={onLeave}
           isHost={isHost}
@@ -1042,7 +1046,7 @@ function RaceView({
                 : 'Gear is locked for this phase.'}
             </span>
             <span className="helper-text">
-              BOOST: gear 3–4, pay 1 Heat, reveal a Basic Speed card.
+              BOOST: any gear, pay 1 Heat, reveal a Basic Speed card.
             </span>
             <span className="helper-text">
               Course: {courseCapacity} base engine slots · effective capacity:{' '}
@@ -1256,7 +1260,12 @@ function RaceView({
                 <span>R{group.round}</span>
                 <strong>{group.label}</strong>
                 <span className="log-summary-text">
-                  {group.entries[0]?.text}
+                  {
+                    (
+                      group.entries.find((entry) => entry.text.includes('locked in')) ??
+                      group.entries[0]
+                    )?.text
+                  }
                   {group.entries.length > 1 ? ` (+${group.entries.length - 1} more)` : ''}
                 </span>
                 <small>

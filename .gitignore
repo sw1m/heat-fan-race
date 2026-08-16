@@ -4,6 +4,8 @@ coverage/
 playwright-report/
 test-results/
 outputs/
+tmp/
+deno.lock
 .env
 .env.local
 .env.*.local

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createBeginnerDeck, countCardKinds, drawCards, shuffle } from './deck';
-import { applyGameAction, createInitialGame, getPublicState } from './engine';
+import {
+  applyGameAction,
+  createInitialGame as createAuthoritativeGame,
+  getPublicState,
+} from './engine';
 import { USA_BEGINNER_TRACK } from './constants';
 import {
   chooseLandingPosition,
@@ -27,6 +31,25 @@ const sixPlayers = [
   { id: 'p5', name: 'Purple', seat: 4, color: '#7b4d9e' },
   { id: 'p6', name: 'Teal', seat: 5, color: '#2b9db2' },
 ];
+
+// Most rule tests intentionally control the starting order so their assertions
+// can focus on the rule under test. The production constructor still randomizes
+// the grid; the dedicated grid test below calls it directly.
+function createInitialGame(
+  specs: Parameters<typeof createAuthoritativeGame>[0],
+  random: () => number = fixedRandom,
+): GameState {
+  const state = createAuthoritativeGame(specs, random);
+  [...state.players]
+    .sort((left, right) => left.seat - right.seat)
+    .forEach((player, index) => {
+      player.position = USA_BEGINNER_TRACK.grid[index]!;
+    });
+  const ordered = [...state.players].sort(positionSort);
+  const adrenalineCount = state.startingPlayerCount >= 5 ? 2 : 1;
+  state.adrenalineEligibleIds = ordered.slice(-adrenalineCount).map((player) => player.id);
+  return state;
+}
 
 function cardIds(state: GameState, playerId: string, count = 1): string[] {
   return state.players
@@ -95,8 +118,8 @@ describe('planning, shifting, and turn order', () => {
   });
 
   it('supports six starting-grid seats and gives the last two cars Adrenaline', () => {
-    const state = createInitialGame(sixPlayers, fixedRandom);
-    expect(state.players.map((player) => player.position)).toEqual([
+    const state = createAuthoritativeGame(sixPlayers, fixedRandom);
+    expect([...state.players].sort(positionSort).map((player) => player.position)).toEqual([
       { space: 0, lane: 0 },
       { space: 0, lane: 1 },
       { space: -1, lane: 0 },
@@ -104,7 +127,16 @@ describe('planning, shifting, and turn order', () => {
       { space: -2, lane: 0 },
       { space: -2, lane: 1 },
     ]);
-    expect(state.adrenalineEligibleIds).toEqual(['p5', 'p6']);
+    const ordered = [...state.players].sort(positionSort);
+    expect(state.adrenalineEligibleIds).toEqual(ordered.slice(-2).map((player) => player.id));
+    expect(state.players.map((player) => player.position)).not.toEqual([
+      { space: 0, lane: 0 },
+      { space: 0, lane: 1 },
+      { space: -1, lane: 0 },
+      { space: -1, lane: 1 },
+      { space: -2, lane: 0 },
+      { space: -2, lane: 1 },
+    ]);
   });
 
   it('rejects duplicate submissions and illegal card ownership', () => {
@@ -555,6 +587,39 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(state.log.some((entry) => entry.text.includes('boosts'))).toBe(true);
   });
 
+  it.each([1, 2])('offers Boost in gear %i when the engine can pay', (gear) => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 1, lane: 0 };
+    state.players[1].position = { space: -1, lane: 0 };
+    state.players[0].gear = gear;
+    state.players[0].hand = Array.from({ length: gear }, (_, index) => ({
+      id: `low-gear-${gear}-${index}`,
+      kind: 'BASIC' as const,
+      value: 1,
+    }));
+    state.players[0].deck = [{ id: `low-gear-boost-${gear}`, kind: 'BASIC', value: 2 }];
+    state.players[1].hand = [{ id: `low-gear-other-${gear}`, kind: 'BASIC', value: 1 }];
+
+    state = applyGameAction(
+      state,
+      {
+        type: 'SUBMIT_PLAN',
+        playerId: 'p1',
+        gear,
+        cardIds: state.players[0].hand.map((card) => card.id),
+      },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p2', gear: 1, cardIds: ['low-gear-other-' + gear] },
+      fixedRandom,
+    );
+
+    expect(state.pending?.playerId).toBe('p1');
+    expect(state.pending?.options).toContain('BOOST');
+  });
+
   it('allows Boost and Adrenaline in either order during the reaction step', () => {
     let state = createInitialGame(players.slice(0, 2), fixedRandom);
     state.players[0].position = { space: 3, lane: 0 };
@@ -593,6 +658,48 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     state = applyGameAction(state, { type: 'ADRENALINE_SPEED', playerId: 'p2' }, fixedRandom);
     expect(state.players[1].engine).toHaveLength(0);
     expect(state.players[1].played.map((card) => card.id)).toContain('adrenaline-boost');
+  });
+
+  it('can use Boost before Adrenaline Cooldown when the engine starts full', () => {
+    let state = createInitialGame(players.slice(0, 2), fixedRandom);
+    state.players[0].position = { space: 3, lane: 0 };
+    state.players[1].position = { space: 0, lane: 0 };
+    state.players[1].gear = 3;
+    state.players[1].engine = Array.from({ length: 7 }, (_, index) => ({
+      id: `full-engine-${index}`,
+      kind: 'HEAT' as const,
+    }));
+    state.players[0].hand = [{ id: 'reverse-order-front', kind: 'BASIC', value: 1 }];
+    state.players[1].hand = [
+      { id: 'reverse-order-one', kind: 'BASIC', value: 1 },
+      { id: 'reverse-order-two', kind: 'BASIC', value: 1 },
+      { id: 'reverse-order-three', kind: 'BASIC', value: 1 },
+      { id: 'reverse-order-heat', kind: 'STARTING_HEAT' },
+    ];
+    state.players[1].deck = [{ id: 'reverse-order-boost', kind: 'BASIC', value: 2 }];
+    state = applyGameAction(
+      state,
+      { type: 'SUBMIT_PLAN', playerId: 'p1', gear: 1, cardIds: ['reverse-order-front'] },
+      fixedRandom,
+    );
+    state = applyGameAction(
+      state,
+      {
+        type: 'SUBMIT_PLAN',
+        playerId: 'p2',
+        gear: 3,
+        cardIds: ['reverse-order-one', 'reverse-order-two', 'reverse-order-three'],
+      },
+      fixedRandom,
+    );
+    state = pass(state, 'p1');
+    expect(state.pending?.options).toContain('BOOST');
+    expect(state.pending?.options).not.toContain('ADRENALINE_COOLDOWN');
+
+    state = applyGameAction(state, { type: 'BOOST', playerId: 'p2' }, fixedRandom);
+    expect(state.pending?.options).toContain('ADRENALINE_COOLDOWN');
+    state = applyGameAction(state, { type: 'ADRENALINE_COOLDOWN', playerId: 'p2' }, fixedRandom);
+    expect(state.players[1].engine).toHaveLength(7);
   });
 
   it('updates the recorded finish space after a post-crossing Boost', () => {
@@ -704,7 +811,10 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
       lane: 0,
     };
     spinning.players[0].gear = 3;
-    spinning.players[0].engine = [];
+    spinning.players[0].engine = [
+      { id: 'spin-engine-1', kind: 'HEAT' },
+      { id: 'spin-engine-2', kind: 'HEAT' },
+    ];
     spinning.players[1].position = { space: -1, lane: 0 };
     spinning.players[0].hand = [
       { id: 'spin-1', kind: 'STARTING_FIVE', value: 5 },
@@ -726,6 +836,46 @@ describe('stress, boost, cooldown, finish, and hidden state', () => {
     expect(spinning.players[0].gear).toBe(1);
     expect(spinning.players[0].position.space).toBe(USA_BEGINNER_TRACK.corners[1].lineSpace - 1);
     expect(spinning.players[0].hand.filter((card) => card.kind === 'STRESS')).toHaveLength(2);
+    expect(spinning.players[0].engine).toHaveLength(0);
+    expect(spinning.players[0].discard.filter((card) => card.kind === 'HEAT')).toHaveLength(2);
+    expect(spinning.stressReserve).toBe(29);
+  });
+
+  it('keeps Adrenaline tied to the number of cars that started the race', () => {
+    let state = createAuthoritativeGame(sixPlayers, fixedRandom);
+    state.players[0].finished = true;
+    state.players[0].finishRank = 1;
+    state.players[1].finished = true;
+    state.players[1].finishRank = 2;
+    const activeIds = state.players.filter((player) => !player.finished).map((player) => player.id);
+
+    for (const playerId of activeIds) {
+      const player = state.players.find((candidate) => candidate.id === playerId)!;
+      player.hand = [{ id: `${playerId}-round-card`, kind: 'BASIC', value: 1 }];
+      player.position = { space: -2, lane: (player.seat % 2) as 0 | 1 };
+    }
+
+    for (const playerId of activeIds) {
+      state = applyGameAction(
+        state,
+        { type: 'SUBMIT_PLAN', playerId, gear: 1, cardIds: [`${playerId}-round-card`] },
+        fixedRandom,
+      );
+    }
+    while (state.phase === 'PLAYER_REACTION') {
+      state = pass(state, state.activePlayerId!);
+    }
+
+    expect(state.startingPlayerCount).toBe(6);
+    expect(state.phase).toBe('PLANNING');
+    expect(state.adrenalineEligibleIds).toHaveLength(2);
+    expect(state.adrenalineEligibleIds).toEqual(
+      [...state.players]
+        .filter((player) => !player.finished)
+        .sort(positionSort)
+        .slice(-2)
+        .map((player) => player.id),
+    );
   });
 
   it('offers Slipstream without increasing corner-check speed and grants Adrenaline to last', () => {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { advanceBotTurns, chooseBotPlan, chooseBotReaction } from './bot';
 import { USA_BEGINNER_TRACK } from './constants';
-import { applyGameAction, createInitialGame } from './engine';
+import { applyGameAction, createInitialGame as createAuthoritativeGame } from './engine';
+import { positionSort } from './track';
 import type { GameState } from './types';
 
 const fixedRandom = () => 0.42;
@@ -47,6 +48,25 @@ const botF = {
   color: '#2b9db2',
   controller: 'BOT' as const,
 };
+
+// Keep bot behavior tests deterministic around the production constructor's
+// randomized starting grid. The real game still randomizes the grid.
+function createInitialGame(
+  specs: Parameters<typeof createAuthoritativeGame>[0],
+  random: () => number = fixedRandom,
+): GameState {
+  const state = createAuthoritativeGame(specs, random);
+  [...state.players]
+    .sort((left, right) => left.seat - right.seat)
+    .forEach((player, index) => {
+      player.position = USA_BEGINNER_TRACK.grid[index]!;
+    });
+  const ordered = [...state.players].sort(positionSort);
+  state.adrenalineEligibleIds = ordered
+    .slice(-(state.startingPlayerCount >= 5 ? 2 : 1))
+    .map((player) => player.id);
+  return state;
+}
 
 function humanCard(state: GameState): string {
   return state.players

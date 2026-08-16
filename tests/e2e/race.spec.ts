@@ -58,6 +58,12 @@ test('a solo player can fill the grid with AI drivers and start a local test rac
   await page.locator('.hand-panel .card-number').first().click();
   await page.getByRole('button', { name: 'LOCK IN PLAN' }).click();
   await expect(page.getByText(/Bot 2 locked in/).first()).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /SKIP ADRENALINE|KEEP HAND \+ END TURN/ }).first(),
+  ).toBeVisible();
+  const skipAdrenaline = page.getByRole('button', { name: 'SKIP ADRENALINE' });
+  if (await skipAdrenaline.isVisible()) await skipAdrenaline.click();
+  await expect(page.getByRole('button', { name: 'KEEP HAND + END TURN' })).toBeVisible();
   await page.locator('.hand-panel .card-number').first().click();
   await expect(page.getByRole('button', { name: 'DISCARD 1 + END TURN' })).toBeVisible();
   await page.getByRole('button', { name: 'DISCARD 1 + END TURN' }).click();
@@ -124,6 +130,8 @@ test('can submit the first plan after starting a new local race from results', a
   await expect(page.locator('.stand-row').filter({ hasText: /Bot/ }).first()).toContainText(
     /G[1-4]/,
   );
+  const skipAdrenaline = page.getByRole('button', { name: 'SKIP ADRENALINE' });
+  if (await skipAdrenaline.isVisible()) await skipAdrenaline.click();
   await expect(page.getByRole('button', { name: 'KEEP HAND + END TURN' })).toBeVisible();
   await page.getByRole('button', { name: 'KEEP HAND + END TURN' }).click();
   await expect(page.getByText('ROUND 2', { exact: true })).toBeVisible();

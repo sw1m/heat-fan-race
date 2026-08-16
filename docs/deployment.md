@@ -4,11 +4,12 @@
 
 1. Create a free project.
 2. Enable Authentication → Providers → Anonymous.
-3. Run every file in `supabase/migrations/` in filename order, including `202608110003_six_player_rooms.sql`.
+3. Run every file in `supabase/migrations/` in filename order, including `202608110003_six_player_rooms.sql`, `202608150001_authoritative_rules.sql`, and `202608150002_private_member_reads.sql`.
 4. Confirm `room_players` and `room_events` are enabled in Realtime.
-5. Copy the project URL and anon key into GitHub Actions repository secrets named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+5. Install the Supabase CLI and deploy `supabase/functions/submit-game-action` with `supabase functions deploy submit-game-action --project-ref <project-ref>`.
+6. Copy the project URL and anon key into GitHub Actions repository secrets named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 
-The migration uses RLS and `security definer` RPCs. Do not grant the browser a service-role key. Keep the Supabase dashboard’s database password and service-role key out of GitHub secrets unless a separate server-side operation requires them.
+The migration uses RLS and `security definer` RPCs. Do not grant the browser a service-role key. The Edge Function receives `SUPABASE_SERVICE_ROLE_KEY` from Supabase’s managed function environment; never put that key in GitHub Pages variables, `.env.local`, logs, or the repository.
 
 ## GitHub Pages
 
@@ -22,7 +23,7 @@ The workflow sets `VITE_BASE_PATH=/<repository-name>/`, builds, uploads `dist/`,
 
 ## Smoke test
 
-Open the public URL in two separate browser profiles. Create a room, copy the invite, join from the second browser, confirm two seats, remove the guest from the lobby as host, rejoin that seat, then start the race. Refresh during planning and verify that the room code, phase, public player counts, and own hand remain available. For a six-player smoke test, fill the remaining seats with local AI drivers and confirm all six cars appear on the starting grid. Run the unit suite and the configured Playwright multi-context test before inviting friends.
+Open the public URL in two separate browser profiles. Create a room, copy the invite, join from the second browser, confirm two seats, remove the guest from the lobby as host, rejoin that seat, then start the race. Refresh during planning and verify that the room code, phase, public player counts, and own hand remain available. Submit one plan from each browser and confirm the active car, Heat counts, and positions reconcile after each action. For a six-player local smoke test, fill the remaining seats with AI drivers and confirm all six cars appear on the randomized starting grid. Run the unit suite and the configured Playwright multi-context test before inviting friends.
 
 ## Manual setup still required in this workspace
 

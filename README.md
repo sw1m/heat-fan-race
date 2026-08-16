@@ -32,9 +32,10 @@ npm run test:e2e
 
 1. Create a Supabase project at [supabase.com](https://supabase.com/).
 2. In Authentication → Providers, enable Anonymous sign-ins.
-3. Apply every file in `supabase/migrations/` in filename order (including the six-player migration) in the SQL editor or with the Supabase CLI.
+3. Apply every file in `supabase/migrations/` in filename order (including the six-player and private-member-read migrations) in the SQL editor or with the Supabase CLI.
 4. Confirm Realtime is enabled and the migration’s `room_players` and `room_events` tables are present in the `supabase_realtime` publication.
-5. Copy the project URL and public anon key into `.env.local` using `.env.example`.
+5. Deploy the authoritative action function from the repository root: `supabase functions deploy submit-game-action --project-ref <project-ref>`.
+6. Copy the project URL and public anon key into `.env.local` using `.env.example`.
 
 Never put a service-role key in `.env.local`, the browser bundle, GitHub Actions logs, or the repository. The frontend only needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 
@@ -53,12 +54,12 @@ The host visits the public URL, enters a temporary nickname, and creates a race.
 
 ## Architecture
 
-The pure rule engine lives under `src/engine/` and is independent of React and Supabase. The UI submits commands through `src/lib/supabase.ts`; the SQL migration locks a room row, checks membership/card ownership/phase/duplicate nonces, and returns a filtered snapshot. Private state is held in `player_private_state`, and the browser only receives its own private hand/deck plus public opponent summaries. See [docs/architecture.md](docs/architecture.md).
+The pure rule engine lives under `src/engine/` and is independent of React and Supabase. The UI submits commands through `src/lib/supabase.ts` to the `submit-game-action` Edge Function. The function reconstructs the complete state, applies the same reducer used by local tests with server randomness, and commits through a room-version compare-and-swap RPC. Private state is held in `player_private_state`, and the browser only receives its own private hand/deck plus public opponent summaries. See [docs/architecture.md](docs/architecture.md).
 
 ## Known limitations
 
 - The exact USA board space sequence could not be recovered from machine-readable official text without reproducing the board artwork. The functional starter circuit is isolated in `src/engine/constants.ts` and documented in [docs/track-data.md](docs/track-data.md); it must be checked against a physical USA board before claiming exact geometry.
-- The remote SQL action boundary currently records and authorizes reactions; the readable TypeScript engine is the reference for resolving the complete game. A production hardening milestone should move the complete resolver into a versioned Supabase Edge Function or a shared server package before public non-demo use.
+- The Supabase Edge Function must be deployed alongside the migrations. If it is absent, shared actions intentionally fail closed instead of falling back to a client-authoritative reducer.
 - AI seats are available in local preview rooms. They choose only actions accepted by the deterministic engine and weigh corner risk, early-lap Heat conservation, one-turn gear/hand planning, blocking, finish-line margin, late-race Heat spending, and reaction value. Difficulty levels and remote Supabase bot seats are still out of scope.
 - There is no account recovery, public room list, spectator mode, chat, mobile-first layout, audio, or monetization.
 

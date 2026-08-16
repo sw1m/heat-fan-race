@@ -2,11 +2,13 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   STARTING_HAND_SIZE,
+  STARTING_STRESS_CARDS,
+  TOTAL_STRESS_CARDS,
   USA_BEGINNER_TRACK,
   USA_ENGINE_HEAT,
-} from './constants';
-import { createBeginnerDeck, drawCards, replenishHand, shuffle } from './deck';
-import { engineHeatCapacityForPlayer, isHeatCard } from './heat';
+} from './constants.ts';
+import { createBeginnerDeck, drawCards, replenishHand, shuffle } from './deck.ts';
+import { engineHeatCapacityForPlayer, isHeatCard } from './heat.ts';
 import {
   crossedCorners,
   chooseLandingPosition,
@@ -15,7 +17,7 @@ import {
   isAdjacentOrBehind,
   orderedPlayers,
   positionSort,
-} from './track';
+} from './track.ts';
 import type {
   Card,
   GameAction,
@@ -24,7 +26,7 @@ import type {
   PendingReaction,
   PlayerState,
   RandomSource,
-} from './types';
+} from './types.ts';
 
 const now = () => Date.now();
 
@@ -172,6 +174,10 @@ function availableAdrenaline(state: GameState, playerId: string): boolean {
   return state.adrenalineEligibleIds.includes(playerId);
 }
 
+function adrenalineCountForRace(state: GameState): number {
+  return (state.startingPlayerCount ?? state.players.length) >= 5 ? 2 : 1;
+}
+
 function startPlayerResolution(state: GameState, playerId: string, random: RandomSource): void {
   const player = findPlayer(state, playerId);
   const plan = state.submitted[playerId];
@@ -201,8 +207,10 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
   const moved = movePlayer(state, player, speed);
   const corners = crossedCorners(state.track, moved.start, moved.end);
   const adrenaline = availableAdrenaline(state, player.id);
-  const capacity = engineCapacity(state, player);
-  const adrenalineCooldownAvailable = adrenaline && canCoolDown(player, 1, capacity);
+  // Keep the Adrenaline Cooldown symbol available for the whole reaction
+  // window. Its affordability is checked when options are rebuilt, so a
+  // Boost used first can create the engine slot needed to cool down afterward.
+  const adrenalineCooldownAvailable = adrenaline;
   state.pending = {
     kind: adrenaline ? 'ADRENALINE' : 'GEAR_REACTION',
     playerId: player.id,
@@ -212,8 +220,11 @@ function startPlayerResolution(state: GameState, playerId: string, random: Rando
     movedSpace: moved.end,
     adrenalineSpeedAvailable: adrenaline,
     adrenalineCooldownAvailable,
-    // Adrenaline Cooldown may fill an empty engine before Boost is chosen.
-    boostAvailable: player.gear >= 3,
+    // Boost is available in every gear and can become affordable after
+    // Adrenaline Cooldown returns a Heat card to an empty engine. The reaction
+    // option calculation checks the current engine contents; this flag tracks
+    // whether the once-per-turn Boost has already been used.
+    boostAvailable: true,
     cooldownAvailable: player.gear === 1 ? 3 : player.gear === 2 ? 1 : 0,
     slipstreamAvailable: canSlipstream(state, player),
     slipstreamUsed: false,
@@ -299,7 +310,9 @@ function applyCornerChecks(
       continue;
     }
     const originalGear = player.gear;
-    player.engine = [];
+    // A spinout empties the engine, but the Heat cards remain in the race and
+    // go to this player's discard pile like every other paid Heat card.
+    player.discard.push(...player.engine.splice(0));
     player.gear = 1;
     player.finishProgress = null;
     player.position = chooseSpinoutPosition(
@@ -309,9 +322,15 @@ function applyCornerChecks(
       player.id,
       player.position,
     );
-    const stressCount = originalGear >= 3 ? 2 : 1;
-    for (let index = 0; index < stressCount; index += 1)
-      player.hand.push({ id: `${player.id}-spin-stress-${state.round}-${index}`, kind: 'STRESS' });
+    const requestedStressCount = originalGear >= 3 ? 2 : 1;
+    const stressCount = Math.min(requestedStressCount, state.stressReserve);
+    state.stressReserve -= stressCount;
+    for (let index = 0; index < stressCount; index += 1) {
+      player.hand.push({
+        id: `${player.id}-spin-stress-${state.round}-${index}`,
+        kind: 'STRESS',
+      });
+    }
     discardPlayedCards(player);
     log(
       state,
@@ -400,7 +419,7 @@ function beginPlanning(state: GameState, random: RandomSource): void {
   state.submitted = {};
   const active = state.players.filter((player) => !player.finished);
   const ordered = [...active].sort(positionSort);
-  const adrenalineCount = ordered.length >= 5 ? 2 : 1;
+  const adrenalineCount = adrenalineCountForRace(state);
   state.adrenalineEligibleIds = ordered.slice(-adrenalineCount).map((player) => player.id);
   log(state, `Round ${state.round}: shift gears and choose cards simultaneously.`);
   void random;
@@ -490,12 +509,19 @@ export function createInitialGame(
   if (playerSpecs.length < MIN_PLAYERS || playerSpecs.length > MAX_PLAYERS) {
     throw new Error(`A race needs ${MIN_PLAYERS}-${MAX_PLAYERS} players.`);
   }
+  const startingOrder = shuffle(playerSpecs, random);
+  const startingPositions = new Map(
+    startingOrder.map((spec, index) => [spec.id, USA_BEGINNER_TRACK.grid[index]]),
+  );
   const players: PlayerState[] = playerSpecs.map((spec, index) => {
     const deck = shuffle(createBeginnerDeck(spec.id), random);
     const player: PlayerState = {
       ...spec,
       gear: 1,
-      position: USA_BEGINNER_TRACK.grid[index] ?? { space: -2, lane: (index % 2) as 0 | 1 },
+      position:
+        startingPositions.get(spec.id) ??
+        USA_BEGINNER_TRACK.grid[index] ??
+        ({ space: -2, lane: (index % 2) as 0 | 1 } as const),
       hand: [],
       deck,
       discard: [],
@@ -519,6 +545,8 @@ export function createInitialGame(
     version: 1,
     phase: 'PLANNING',
     round: 1,
+    startingPlayerCount: playerSpecs.length,
+    stressReserve: Math.max(0, TOTAL_STRESS_CARDS - playerSpecs.length * STARTING_STRESS_CARDS),
     track: USA_BEGINNER_TRACK,
     players,
     resolutionOrder: [],
@@ -532,7 +560,7 @@ export function createInitialGame(
     log: [],
   };
   const ordered = orderedPlayers(state.players);
-  const adrenalineCount = ordered.length >= 5 ? 2 : 1;
+  const adrenalineCount = adrenalineCountForRace(state);
   state.adrenalineEligibleIds = ordered.slice(-adrenalineCount).map((player) => player.id);
   log(state, 'Race ready: everyone starts in 1st gear with seven cards.');
   return state;
@@ -661,7 +689,6 @@ export function getPublicState(
     }
   >;
 } {
-  void viewerId;
   return {
     ...state,
     submitted: Object.fromEntries(
@@ -681,7 +708,8 @@ export function getPublicState(
       handCount: player.hand.length,
       deckCount: player.deck.length,
       discardCount: player.discard.length,
-      engineHeat: player.engine.length,
+      engineHeat:
+        player.id === viewerId ? player.engine.length : (player.engineHeat ?? player.engine.length),
       engineHeatCapacity: engineCapacity(state, player),
       submitted: Boolean(state.submitted[player.id]),
     })),

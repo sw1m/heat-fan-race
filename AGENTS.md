@@ -5,7 +5,8 @@
 - `src/engine/` — pure TypeScript cards, track data, state machine, rules-following bot policy, and tests. Do not import React, Supabase, DOM APIs, or browser storage here.
 - `src/lib/` — Supabase command/read adapter, local preview persistence, and small room policy helpers.
 - `src/ui/` — React views and CSS table presentation. UI dispatches commands; it does not mutate authoritative game state directly.
-- `supabase/migrations/` — schema, RLS, Realtime publication, and transactional RPC boundaries.
+- `supabase/migrations/` — schema, RLS, Realtime publication, start/reset RPCs, and the transactional state-commit boundary.
+- `supabase/functions/submit-game-action/` — authenticated server-side action adapter. It reconstructs private state, calls the pure engine, and commits through the locked RPC. Never move the service-role key into `src/` or the browser bundle.
 - `docs/` — architecture, rule interpretations, track provenance, and deployment notes.
 - `tests/e2e/` — Playwright smoke tests. A configured backend is required for the multi-context race test.
 - `.github/workflows/` — CI and GitHub Pages deployment.
@@ -23,7 +24,7 @@ npm run test:e2e
 
 ## Architectural boundaries
 
-The engine is deterministic when given an injected random source. State changes go through `applyGameAction` locally or `submit_game_action` remotely. The client may request actions, but it must not choose a deck draw, move a car directly, or write another player’s cards. Supabase table reads do not expose `rooms.game_state`; RPC snapshots filter private arrays to the caller’s own seat.
+The engine is deterministic when given an injected random source. State changes go through `applyGameAction` locally or the `submit-game-action` Edge Function plus `commit_game_state` remotely. The client may request actions, but it must not choose a deck draw, move a car directly, or write another player’s cards. Supabase table reads do not expose `rooms.game_state`; RPC snapshots filter private arrays to the caller’s own seat.
 
 ## Rule-engine conventions
 
@@ -36,7 +37,7 @@ The engine is deterministic when given an injected random source. State changes 
 
 ## Testing expectations
 
-Run typecheck, lint, unit tests, and production build for every change. Run Playwright when browsers and a configured Supabase project are available. Tests should exercise both successful and rejected commands. Prefer seeded random sources for rule tests.
+Run typecheck, lint, unit tests, and production build for every change. Run Playwright when browsers and a configured Supabase project are available. If the Supabase CLI/Deno toolchain is available, deploy or serve the Edge Function with `--use-api`/the project environment before remote smoke tests. Tests should exercise both successful and rejected commands. Prefer seeded random sources for rule tests.
 
 ## Definition of done
 

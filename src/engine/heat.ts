@@ -1,4 +1,4 @@
-import type { Card, PlayerState } from './types';
+import type { Card, PlayerState } from './types.ts';
 
 export function isHeatCard(card: Card): boolean {
   return card.kind === 'HEAT' || card.kind === 'STARTING_HEAT';

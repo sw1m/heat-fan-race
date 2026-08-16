@@ -116,7 +116,28 @@ export async function restartRemoteRoom(roomId: string): Promise<RemoteRoom> {
 }
 
 export async function sendRemoteAction(roomId: string, action: GameAction): Promise<RemoteRoom> {
-  return callRpc('submit_game_action', { p_room_id: roomId, p_action: action });
+  if (!supabase) throw new Error('Realtime backend is not configured.');
+  const { data, error } = await supabase.functions.invoke('submit-game-action', {
+    body: {
+      roomId,
+      action,
+      actionNonce: crypto.randomUUID(),
+    },
+  });
+  if (error) {
+    const context = 'context' in error ? (error as { context?: unknown }).context : undefined;
+    let serverMessage: string | undefined;
+    if (context instanceof Response) {
+      try {
+        const body = (await context.clone().json()) as { error?: string };
+        serverMessage = body.error;
+      } catch {
+        // Preserve the SDK error when the function returned a non-JSON body.
+      }
+    }
+    throw new Error(serverMessage ?? error.message);
+  }
+  return asRemoteRoom(data);
 }
 
 export async function loadRemoteRoom(roomId: string): Promise<RemoteRoom> {
@@ -143,11 +164,6 @@ export function subscribeToRoom(roomId: string, onChange: () => void): () => voi
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'room_events', filter: `room_id=eq.${roomId}` },
-      onChange,
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'room_players', filter: `room_id=eq.${roomId}` },
       onChange,
     )
     .subscribe();

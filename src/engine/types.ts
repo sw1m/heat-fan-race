@@ -66,6 +66,8 @@ export interface PlayerState {
   deck: Card[];
   discard: Card[];
   engine: Card[];
+  /** Public projection only; authoritative engine state is `engine`. */
+  engineHeat?: number;
   played: Card[];
   finished: boolean;
   finishRank: number | null;
@@ -112,6 +114,10 @@ export interface GameState {
   version: 1;
   phase: Phase;
   round: number;
+  /** Number of cars that started this race; Adrenaline uses this permanently. */
+  startingPlayerCount: number;
+  /** Remaining cards in the shared finite Stress reserve. */
+  stressReserve: number;
   track: TrackConfig;
   players: PlayerState[];
   resolutionOrder: string[];

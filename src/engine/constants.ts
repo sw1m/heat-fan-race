@@ -1,4 +1,4 @@
-import type { TrackConfig, TrackVisualConfig } from './types';
+import type { TrackConfig, TrackVisualConfig } from './types.ts';
 
 export const PLAYER_COLORS = [
   '#d44735',
@@ -60,5 +60,7 @@ export const STARTING_HAND_SIZE = 7;
 export const USA_ENGINE_HEAT = 6;
 export const TOTAL_HEAT_CARDS = 7;
 export const STARTER_DECK_EXTRA_HEAT_CARDS = TOTAL_HEAT_CARDS - USA_ENGINE_HEAT;
+export const TOTAL_STRESS_CARDS = 37;
+export const STARTING_STRESS_CARDS = 3;
 export const MAX_PLAYERS = 6;
 export const MIN_PLAYERS = 2;

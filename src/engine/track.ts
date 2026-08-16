@@ -1,4 +1,4 @@
-import type { CarPosition, Lane, PlayerState, TrackConfig, TrackVisualPoint } from './types';
+import type { CarPosition, Lane, PlayerState, TrackConfig, TrackVisualPoint } from './types.ts';
 
 export interface VisualTrackPosition extends TrackVisualPoint {
   angle: number;

@@ -1,5 +1,5 @@
-import { BASIC_VALUES, STARTING_HAND_SIZE } from './constants';
-import type { Card, CardKind, PlayerState, RandomSource } from './types';
+import { BASIC_VALUES, STARTING_HAND_SIZE } from './constants.ts';
+import type { Card, CardKind, PlayerState, RandomSource } from './types.ts';
 
 export function createCard(kind: CardKind, id: string, value?: number): Card {
   return { id, kind, ...(value === undefined ? {} : { value }) };
